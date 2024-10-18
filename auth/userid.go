@@ -7,7 +7,7 @@ package auth
 import (
 	"regexp"
 
-	"github.com/vpnhouse/tunnel/pkg/xerror"
+	"github.com/vpnhouse/common-lib-go/xerror"
 )
 
 var (

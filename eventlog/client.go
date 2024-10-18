@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/vpnhouse/tunnel/pkg/human"
+	"github.com/vpnhouse/common-lib-go/human"
 	"github.com/vpnhouse/tunnel/proto"
 	"go.uber.org/zap"
 )

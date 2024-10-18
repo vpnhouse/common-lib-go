@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	apiDoc "github.com/vpnhouse/api"
-	"github.com/vpnhouse/tunnel/pkg/version"
+	"github.com/vpnhouse/common-lib-go/version"
 
 	"go.uber.org/zap"
 )

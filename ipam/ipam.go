@@ -9,8 +9,8 @@ package ipam
 import (
 	"fmt"
 
-	"github.com/vpnhouse/tunnel/pkg/ippool"
-	"github.com/vpnhouse/tunnel/pkg/xnet"
+	"github.com/vpnhouse/common-lib-go/ippool"
+	"github.com/vpnhouse/common-lib-go/xnet"
 )
 
 // Policy define peer's network access rules.

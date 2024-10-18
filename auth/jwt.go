@@ -10,8 +10,8 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
-	"github.com/vpnhouse/tunnel/pkg/xap"
-	"github.com/vpnhouse/tunnel/pkg/xerror"
+	"github.com/vpnhouse/common-lib-go/xap"
+	"github.com/vpnhouse/common-lib-go/xerror"
 	"go.uber.org/zap"
 )
 

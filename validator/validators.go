@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/asaskevich/govalidator"
-	"github.com/vpnhouse/tunnel/pkg/human"
-	"github.com/vpnhouse/tunnel/pkg/xnet"
+	"github.com/vpnhouse/common-lib-go/human"
+	"github.com/vpnhouse/common-lib-go/xnet"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"gopkg.in/hlandau/passlib.v1"
 	"gopkg.in/hlandau/passlib.v1/abstract"

@@ -12,7 +12,7 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 
-	"github.com/vpnhouse/tunnel/pkg/xerror"
+	"github.com/vpnhouse/common-lib-go/xerror"
 )
 
 const KeySize = 2048

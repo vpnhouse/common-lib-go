@@ -7,7 +7,7 @@
 package ipam
 
 import (
-	"github.com/vpnhouse/tunnel/pkg/xnet"
+	"github.com/vpnhouse/common-lib-go/xnet"
 )
 
 type netFilter interface {

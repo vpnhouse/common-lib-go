@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vpnhouse/tunnel/pkg/human"
+	"github.com/vpnhouse/common-lib-go/human"
 	"gopkg.in/hlandau/passlib.v1"
 )
 

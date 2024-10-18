@@ -2,7 +2,7 @@ package xhttp
 
 import (
 	adminAPI "github.com/vpnhouse/api/go/server/tunnel_admin"
-	"github.com/vpnhouse/tunnel/pkg/xerror"
+	"github.com/vpnhouse/common-lib-go/xerror"
 )
 
 // DomainConfig is the YAML version of the `adminAPI.DomainConfig` struct.

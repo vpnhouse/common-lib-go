@@ -12,7 +12,7 @@ package ipam
 import (
 	"fmt"
 
-	"github.com/vpnhouse/tunnel/pkg/xnet"
+	"github.com/vpnhouse/common-lib-go/xnet"
 	"go.uber.org/zap"
 )
 

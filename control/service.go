@@ -5,7 +5,7 @@
 package control
 
 import (
-	"github.com/vpnhouse/tunnel/pkg/xerror"
+	"github.com/vpnhouse/common-lib-go/xerror"
 	"go.uber.org/zap"
 )
 

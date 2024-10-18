@@ -8,7 +8,7 @@ package ipam
 
 import (
 	"github.com/dustin/go-humanize"
-	"github.com/vpnhouse/tunnel/pkg/xnet"
+	"github.com/vpnhouse/common-lib-go/xnet"
 )
 
 const (

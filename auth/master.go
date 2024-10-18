@@ -8,8 +8,8 @@ import (
 	"crypto/rsa"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
-	"github.com/vpnhouse/tunnel/pkg/xcrypto"
-	"github.com/vpnhouse/tunnel/pkg/xerror"
+	"github.com/vpnhouse/common-lib-go/xcrypto"
+	"github.com/vpnhouse/common-lib-go/xerror"
 	"go.uber.org/zap"
 )
 

@@ -9,7 +9,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	migrate "github.com/rubenv/sql-migrate"
-	"github.com/vpnhouse/tunnel/pkg/xerror"
+	"github.com/vpnhouse/common-lib-go/xerror"
 	"go.uber.org/zap"
 
 	_ "github.com/mattn/go-sqlite3"

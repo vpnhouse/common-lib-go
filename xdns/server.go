@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/coredns/caddy"
-	"github.com/vpnhouse/tunnel/pkg/xdns/plugin"
+	"github.com/vpnhouse/common-lib-go/xdns/plugin"
 
 	// Include all plugins.
 	_ "github.com/coredns/coredns/plugin/any"

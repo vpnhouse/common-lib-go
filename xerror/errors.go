@@ -14,7 +14,7 @@ import (
 	"github.com/getsentry/sentry-go"
 	"github.com/prometheus/client_golang/prometheus"
 	openapi "github.com/vpnhouse/api/go/server/common"
-	"github.com/vpnhouse/tunnel/pkg/version"
+	"github.com/vpnhouse/common-lib-go/version"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )

@@ -22,7 +22,7 @@ import (
 	"github.com/slok/go-http-metrics/middleware"
 	middlewarestd "github.com/slok/go-http-metrics/middleware/std"
 	openapi "github.com/vpnhouse/api/go/server/common"
-	"github.com/vpnhouse/tunnel/pkg/xerror"
+	"github.com/vpnhouse/common-lib-go/xerror"
 	"go.uber.org/zap"
 	"golang.org/x/net/idna"
 )

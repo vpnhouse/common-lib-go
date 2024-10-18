@@ -12,7 +12,7 @@ import (
 	"github.com/coredns/coredns/plugin/metrics"
 	"github.com/coredns/coredns/request"
 	"github.com/miekg/dns"
-	"github.com/vpnhouse/tunnel/pkg/xdns/dnsbase"
+	"github.com/vpnhouse/common-lib-go/xdns/dnsbase"
 	"go.uber.org/zap"
 )
 
