@@ -43,6 +43,7 @@ type ClientClaims struct {
 	InstallationId string                 `json:"installation_id,omitempty"`
 	PlatformType   string                 `json:"platform_type,omitempty"`
 	Entitlements   map[string]interface{} `json:"entitlements,omitempty"`
+	ClientFeatures map[string]interface{} `json:"client_features,omitempty"`
 	jwt.StandardClaims
 }
 
