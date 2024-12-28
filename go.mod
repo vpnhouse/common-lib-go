@@ -27,8 +27,8 @@ require (
 	github.com/slok/go-http-metrics v0.10.0
 	github.com/stretchr/testify v1.8.4
 	github.com/vishvananda/netlink v1.1.0
-	github.com/vpnhouse/api v0.0.0-20240710130147-abe1c9a47ae5
-	github.com/vpnhouse/tunnel v0.4.1-0.20241016051214-8334075fd102
+	github.com/vpnhouse/api v0.0.0-20240916134854-020f48ada450
+	github.com/vpnhouse/tunnel v0.5.1-0.20241227123605-1305a5c9ce83
 	go.etcd.io/etcd/client/v3 v3.5.2
 	go.uber.org/zap v1.25.0
 	golang.org/x/net v0.17.0
