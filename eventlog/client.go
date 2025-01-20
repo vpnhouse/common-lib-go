@@ -2,6 +2,7 @@ package eventlog
 
 import (
 	"fmt"
+	"net"
 	"sync"
 
 	"github.com/vpnhouse/common-lib-go/human"
@@ -26,9 +27,14 @@ type Client struct {
 	instanceID   string
 }
 
-func NewClient(instanceID string, tunnelHost string, eventlogSync EventlogSync, opt ...Option) (*Client, error) {
+func NewClient(instanceID string, tunnelHostPort string, eventlogSync EventlogSync, opt ...Option) (*Client, error) {
+	tunnelHost, tunnelPort, err := net.SplitHostPort(tunnelHostPort)
+	if err != nil || tunnelPort == "" {
+		tunnelHost = tunnelHostPort
+		tunnelPort = "8089" // Default port
+	}
 	opts := options{
-		TunnelPort:             "8089",     // Default port
+		TunnelPort:             tunnelPort, // use port as default value in case no opts given
 		TunnelID:               tunnelHost, // use host as default value in case no opts given
 		LockTtl:                defaultLockTtl,
 		LockProlongateTimeout:  defaultLockProlongateTimeout,
