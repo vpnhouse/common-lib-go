@@ -58,7 +58,7 @@ func (s *Sign) String() string {
 	return ""
 }
 
-func (s *Sign) GrpcServerCredentials() (credentials.TransportCredentials, error) {
+func (s *Sign) GrpcServerCredentials(caPem []byte) (credentials.TransportCredentials, error) {
 	if len(s.CertPem) == 0 || len(s.PrivateKeyPem) == 0 {
 		return nil, errors.New("incomplete/uninitialized cert and private key")
 	}
@@ -68,8 +68,18 @@ func (s *Sign) GrpcServerCredentials() (credentials.TransportCredentials, error)
 		return nil, fmt.Errorf("failed to load TLS key pair: %w", err)
 	}
 
+	var certPool *x509.CertPool
+	if len(caPem) > 0 {
+		// create cert pool and append ca's cert
+		certPool = x509.NewCertPool()
+		if !certPool.AppendCertsFromPEM(caPem) {
+			return nil, fmt.Errorf("failed to create cert pool: %w", err)
+		}
+	}
+
 	return credentials.NewTLS(&tls.Config{
 		Certificates: []tls.Certificate{certificate},
+		ClientCAs:    certPool,
 	}), nil
 }
 
@@ -99,12 +109,12 @@ func (s *Sign) Store(storageDirectory string, signName string) error {
 		return errors.New("sign private key is not set on")
 	}
 
-	err := os.WriteFile(path.Join(storageDirectory, makeName(signName, certFileName)), s.CertPem, 0600)
+	err := os.WriteFile(path.Join(storageDirectory, makeName(signName, certFileName)), s.CertPem, 0o600)
 	if err != nil {
 		return fmt.Errorf("failed to store sign cert: %w", err)
 	}
 
-	err = os.WriteFile(path.Join(storageDirectory, makeName(signName, privateKeyFileName)), s.PrivateKeyPem, 0600)
+	err = os.WriteFile(path.Join(storageDirectory, makeName(signName, privateKeyFileName)), s.PrivateKeyPem, 0o600)
 	if err != nil {
 		return fmt.Errorf("failed to store sign cert: %w", err)
 	}
@@ -152,7 +162,6 @@ func LoadSign(storageDirectory string, signName string) (*Sign, error) {
 		PrivateKey:    privateKey,
 		PrivateKeyPem: privateKeyPem,
 	}, nil
-
 }
 
 type SignGenOption func(opts *SignGenOptions) error
