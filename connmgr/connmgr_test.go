@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	testMaxConns = 2
+	testMaxConns = 1024 * 1024
 )
 
 var mgr = NewConnMgr()
@@ -73,8 +73,6 @@ func TestRegister(t *testing.T) {
 		conns = append(conns, c)
 	}
 
-	assert.Equal(t, testMaxConns, len(mgr.connById))
-
 	for _, c := range conns {
 		mgrc, err := mgr.Lookup(c.id)
 		assert.Nil(t, err)
@@ -90,5 +88,25 @@ func TestRegister(t *testing.T) {
 		assert.True(t, c.closed)
 	}
 
-	assert.Equal(t, 0, len(mgr.connById))
+}
+
+func TestCloseAll(t *testing.T) {
+	conns := make([]*conn, 0)
+
+	for idx := 0; idx < testMaxConns; idx++ {
+		c := &conn{}
+		id, err := mgr.Register(c)
+		assert.Nil(t, err)
+		assert.GreaterOrEqual(t, id, connMinimalID)
+		c.id = id
+		conns = append(conns, c)
+	}
+
+	mgr.CloseAll()
+
+	for _, c := range conns {
+		_, err := mgr.Lookup(c.id)
+		assert.ErrorIs(t, ErrNotExist, err)
+		assert.True(t, c.closed)
+	}
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"sync/atomic"
 )
 
 const (
@@ -18,38 +19,31 @@ var (
 )
 
 type Instance struct {
-	lock     sync.Mutex
-	nextId   int
-	connById map[int]net.Conn
+	pmap   atomic.Pointer[sync.Map]
+	nextId int
 }
 
 func NewConnMgr() *Instance {
-	return &Instance{
-		nextId:   connMinimalID,
-		connById: make(map[int]net.Conn),
+	m := &Instance{
+		nextId: connMinimalID,
 	}
+	m.switchMap()
+
+	return m
 }
 
 func (m *Instance) Lookup(id int) (net.Conn, error) {
-	m.lock.Lock()
-	defer m.lock.Unlock()
+	connById := m.pmap.Load()
 
-	c, ok := m.connById[id]
+	c, ok := connById.Load(id)
 	if !ok {
 		return nil, ErrNotExist
 	} else {
-		return c, nil
+		return c.(net.Conn), nil
 	}
 }
 
 func (m *Instance) Register(c net.Conn) (int, error) {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-
-	if len(m.connById) >= maxConns {
-		return -1, ErrOutOfResources
-	}
-
 	incId := func() {
 		m.nextId += 1
 		if m.nextId >= connMaximalID || m.nextId < connMinimalID {
@@ -57,40 +51,40 @@ func (m *Instance) Register(c net.Conn) (int, error) {
 		}
 	}
 
+	connById := m.pmap.Load()
 	for {
 		id := m.nextId
-		_, busy := m.connById[id]
+		_, busy := connById.LoadOrStore(id, c)
 		incId()
 
 		if busy {
 			continue
 		} else {
-			m.connById[id] = c
 			return id, nil
 		}
 	}
 }
 
 func (m *Instance) Close(id int) error {
-	m.lock.Lock()
-	defer m.lock.Unlock()
+	connById := m.pmap.Load()
 
-	c, ok := m.connById[id]
+	c, ok := connById.LoadAndDelete(id)
 	if ok {
-		delete(m.connById, id)
-		return c.Close()
+		return c.(net.Conn).Close()
 	} else {
 		return ErrNotExist
 	}
 }
 
 func (m *Instance) CloseAll() {
-	m.lock.Lock()
-	defer m.lock.Unlock()
+	connById := m.switchMap()
 
-	for _, c := range m.connById {
-		c.Close()
-	}
+	connById.Range(func(id, c any) bool {
+		c.(net.Conn).Close()
+		return true
+	})
+}
 
-	m.connById = make(map[int]net.Conn)
+func (m *Instance) switchMap() *sync.Map {
+	return m.pmap.Swap(&sync.Map{})
 }
