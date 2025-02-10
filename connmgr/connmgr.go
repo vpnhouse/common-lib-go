@@ -65,15 +65,15 @@ func (m *Instance) Register(c net.Conn) (int, error) {
 	}
 }
 
-func (m *Instance) Close(id int) error {
+func (m *Instance) Unregister(id int) error {
 	connById := m.pmap.Load()
 
-	c, ok := connById.LoadAndDelete(id)
-	if ok {
-		return c.(net.Conn).Close()
-	} else {
+	_, ok := connById.LoadAndDelete(id)
+	if !ok {
 		return ErrNotExist
 	}
+
+	return nil
 }
 
 func (m *Instance) CloseAll() {
