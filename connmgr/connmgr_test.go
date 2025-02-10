@@ -80,12 +80,11 @@ func TestRegister(t *testing.T) {
 	}
 
 	for _, c := range conns {
-		err := mgr.Close(c.id)
+		err := mgr.Unregister(c.id)
 		assert.Nil(t, err)
 
-		err = mgr.Close(c.id)
+		err = mgr.Unregister(c.id)
 		assert.ErrorIs(t, ErrNotExist, err)
-		assert.True(t, c.closed)
 	}
 
 }
