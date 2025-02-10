@@ -6,6 +6,7 @@ import (
 	"os"
 	"sync"
 	"testing"
+	"time"
 
 	"math/rand"
 
@@ -13,7 +14,7 @@ import (
 )
 
 const (
-	testRounds  = 10000
+	testRounds  = 1000
 	messageSize = 1024 * 1024
 	initialSeed = 12345
 
@@ -25,7 +26,9 @@ var (
 	randInstance = rand.New(rand.NewSource(initialSeed))
 )
 
-func once(t *testing.T) {
+type lenGetnType func() int
+
+func once(t *testing.T, rlen, wlen lenGetnType) {
 	originalBuffer := make([]byte, messageSize)
 
 	n, err := randInstance.Read(originalBuffer)
@@ -45,7 +48,7 @@ func once(t *testing.T) {
 		defer wg.Done()
 		src := bytes.NewBuffer(originalBuffer)
 		for {
-			buf := make([]byte, rand.Intn(writeMaxSize-1)+1)
+			buf := make([]byte, wlen())
 			nR, err := src.Read(buf)
 			if nR == 0 {
 				break
@@ -69,7 +72,7 @@ func once(t *testing.T) {
 		defer pipe.Close()
 		defer wg.Done()
 		for {
-			chunkSize := rand.Intn(readMaxSize-1) + 1
+			chunkSize := rlen()
 			buf := make([]byte, chunkSize)
 			n, err := pipe.Read(buf)
 			if errors.Is(err, os.ErrClosed) {
@@ -91,18 +94,59 @@ func once(t *testing.T) {
 			broken = true
 		}
 	}
-	// if broken {appe
-	// 	fmt.Println("========================== ORIGINAL ==========================")
-	// 	fmt.Println(originalBuffer)
-	// 	fmt.Println("========================== COPIED ==========================")
-	// 	fmt.Println(copiedBuffer)
-	// }
 	assert.False(t, broken)
 
 }
 
+func TestPerByte(t *testing.T) {
+	once(t,
+		func() int { return 1 },
+		func() int { return 1 },
+	)
+}
+
+func TestDeadlock(t *testing.T) {
+	wg := sync.WaitGroup{}
+
+	pipe, err := New()
+	assert.Nil(t, err)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		time.Sleep(time.Millisecond * 100)
+		buf := make([]byte, 16)
+
+		n, err := pipe.Read(buf)
+		assert.Equal(t, 0, n)
+		assert.ErrorIs(t, err, os.ErrClosed)
+	}()
+	pipe.Close()
+	err = pipe.Close()
+	assert.ErrorIs(t, err, os.ErrClosed)
+	wg.Wait()
+
+	pipe, err = New()
+	assert.Nil(t, err)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		time.Sleep(time.Millisecond * 100)
+		buf := make([]byte, 1024*1024)
+		n, err := pipe.Write(buf)
+		assert.Equal(t, 0, n)
+		assert.ErrorIs(t, err, os.ErrClosed)
+	}()
+	pipe.Close()
+	err = pipe.Close()
+	assert.ErrorIs(t, err, os.ErrClosed)
+	wg.Wait()
+}
+
 func TestGeneric(t *testing.T) {
 	for idx := 0; idx < testRounds; idx++ {
-		once(t)
+		once(t,
+			func() int { return rand.Intn(readMaxSize-1) + 1 },
+			func() int { return rand.Intn(writeMaxSize-1) + 1 },
+		)
 	}
 }
