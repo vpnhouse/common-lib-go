@@ -49,6 +49,7 @@ func (p *XPipe) Read(b []byte) (n int, err error) {
 
 		if err != nil {
 			if len(p.buffer) == 0 {
+				p.lock.Unlock()
 				return
 			} else {
 				break
@@ -85,6 +86,7 @@ func (p *XPipe) Write(b []byte) (n int, err error) {
 		if spaceleft == 0 {
 			err = p.wait(p.wTrigger, &p.wdeadline)
 			if err != nil {
+				p.lock.Unlock()
 				return
 			}
 			spaceleft = bufferSpaceLeft()
@@ -101,7 +103,6 @@ func (p *XPipe) Write(b []byte) (n int, err error) {
 	}
 
 	p.lock.Unlock()
-
 	return
 }
 
