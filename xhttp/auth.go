@@ -15,6 +15,7 @@ const (
 	HeaderAuthorization      = "Authorization"
 	HeaderProxyAuthorization = "Proxy-Authorization"
 	AuthTypeBearer           = "bearer"
+	AuthTypeBasic            = "basic"
 )
 
 func AuthIsBearer(authType string) bool {
