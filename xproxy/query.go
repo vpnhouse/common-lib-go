@@ -107,6 +107,12 @@ func (i *Instance) handleProxy(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad request", http.StatusHTTPVersionNotSupported)
 	}
 
+	if r.URL.Scheme == "https" {
+		zap.L().Warn("Attempt to proxy https", zap.String("host", r.URL.Host))
+		http.Error(w, "Proxying HTTPS as plain text is dumb idea", http.StatusTeapot)
+		return
+	}
+
 	proxyReq, err := http.NewRequest(r.Method, r.URL.String(), r.Body)
 	if err != nil {
 		zap.L().Error("Error creating proxy request", zap.Error(err))
