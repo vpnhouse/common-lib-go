@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/posener/h2conn"
+	"github.com/vpnhouse/common-lib-go/xhttp"
 	"github.com/vpnhouse/common-lib-go/xrand"
 	"go.uber.org/zap"
 )
@@ -17,8 +18,9 @@ type transport interface {
 }
 
 type Instance struct {
-	Transport  transport
-	MarkHeader string
+	Transport    transport
+	MarkHeader   string
+	AuthCallback func(authType, authInfo string) error
 }
 
 func (i *Instance) doPairedForward(wg *sync.WaitGroup, src, dst io.ReadWriteCloser) {
@@ -149,6 +151,21 @@ func (i *Instance) handleProxy(w http.ResponseWriter, r *http.Request) {
 }
 
 func (i *Instance) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if i.AuthCallback != nil {
+		authType, authInfo := xhttp.ExtractAuthorizationInfo(r, xhttp.HeaderProxyAuthorization)
+		if authInfo == "" {
+			http.Error(w, "Proxy authentication required", http.StatusProxyAuthRequired)
+			return
+		}
+
+		err := i.AuthCallback(authType, authInfo)
+		if err != nil {
+			zap.L().Error("Authentication failed", zap.Error(err))
+			http.Error(w, "Authentication failed", http.StatusForbidden)
+			return
+		}
+	}
+
 	if r.Method == "CONNECT" {
 		if r.ProtoMajor == 1 {
 			i.handleV1Connect(w, r)

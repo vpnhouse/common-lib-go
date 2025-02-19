@@ -12,12 +12,13 @@ import (
 )
 
 const (
-	headerAuthorization = "Authorization"
-	authTypeBearer      = "bearer"
+	HeaderAuthorization      = "Authorization"
+	HeaderProxyAuthorization = "Proxy-Authorization"
+	AuthTypeBearer           = "bearer"
 )
 
 func AuthIsBearer(authType string) bool {
-	return strings.ToLower(authType) == authTypeBearer
+	return strings.ToLower(authType) == AuthTypeBearer
 }
 
 func ExtractAuthorizationInfo(r *http.Request, header string) (authType string, authInfo string) {
@@ -35,7 +36,7 @@ func ExtractAuthorizationInfo(r *http.Request, header string) (authType string, 
 }
 
 func ExtractTokenFromRequest(r *http.Request) (string, bool) {
-	authType, authToken := ExtractAuthorizationInfo(r, headerAuthorization)
+	authType, authToken := ExtractAuthorizationInfo(r, HeaderAuthorization)
 	if authToken == "" {
 		zap.L().Debug("Authentication token was not found")
 		return "", false
