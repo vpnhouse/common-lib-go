@@ -154,6 +154,7 @@ func (i *Instance) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if i.AuthCallback != nil {
 		authType, authInfo := xhttp.ExtractAuthorizationInfo(r, xhttp.HeaderProxyAuthorization)
 		if authInfo == "" {
+			w.Header()["Proxy-Authenticate"] = []string{"Basic realm=\"proxy\""}
 			http.Error(w, "Proxy authentication required", http.StatusProxyAuthRequired)
 			return
 		}
