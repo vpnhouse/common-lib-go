@@ -47,8 +47,5 @@ func (w *Cond) Signal() bool {
 }
 
 func (w *Cond) Destroy() {
-	w.locker.Lock()
-	defer w.locker.Unlock()
-
 	close(w.notify)
 }
