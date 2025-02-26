@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	LoadCapacity             = 1024 * 1024
+	LoadCapacity             = 1024 * 1024 * 60
 	LoadMaxWaitInterval      = time.Microsecond
 	LoadMaxBroadcastInterval = time.Microsecond * time.Duration(100)
 )
@@ -22,7 +22,7 @@ func round(t *testing.T, ctx context.Context, triggerInterval time.Duration, exp
 	var triggered bool
 	var counter int
 	var lock sync.Mutex
-	xcond := NewCond(&lock)
+	xcond := NewCond()
 
 	go func() {
 		for {
@@ -42,7 +42,7 @@ func round(t *testing.T, ctx context.Context, triggerInterval time.Duration, exp
 		wg.Add(1)
 		go func() {
 			counter += 1
-			result := xcond.Wait(ctx)
+			result := (xcond.Wait(ctx, &lock) == nil)
 			assert.Equal(t, expected, result)
 			lock.Unlock()
 			func() { counter -= 1 }()
@@ -75,7 +75,7 @@ func TestHighLoad(t *testing.T) {
 	fmt.Println("Testing random load")
 	var (
 		locker   = &sync.Mutex{}
-		xcond    = NewCond(locker)
+		xcond    = NewCond()
 		wg       sync.WaitGroup
 		capacity = LoadCapacity
 		started  = time.Now()
@@ -99,8 +99,8 @@ func TestHighLoad(t *testing.T) {
 		go func() {
 			locker.Lock()
 			ctx, _ := context.WithTimeout(context.Background(), LoadMaxBroadcastInterval*9/10)
-			result := xcond.Wait(ctx)
-			if !result {
+			err := xcond.Wait(ctx, locker)
+			if err != nil {
 				timeouts.Add(1)
 			}
 			locker.Unlock()

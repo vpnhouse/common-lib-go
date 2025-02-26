@@ -6,52 +6,48 @@ import (
 )
 
 type Cond struct {
-	locker  sync.Locker
-	waiters int
 	notify  chan struct{}
+	waiters int
 }
 
-func NewCond(locker sync.Locker) *Cond {
+func NewCond() *Cond {
 	return &Cond{
-		locker: locker,
 		notify: make(chan struct{}),
 	}
 }
 
 // Wait() must be called under the lock
-func (w *Cond) Wait(ctx context.Context) bool {
-	w.waiters += 1
-	w.locker.Unlock()
-	defer w.locker.Lock()
+func (w *Cond) Wait(ctx context.Context, lock *sync.Mutex) error {
+	w.waiters++
+	lock.Unlock()
 
 	select {
-	case _, ok := <-w.notify:
-		return ok
+	case <-w.notify:
+		lock.Lock()
+		w.waiters--
+		return nil
 	case <-ctx.Done():
-		return false
-	}
-}
-
-// Broadcast() must be called under the lock
-func (w *Cond) Broadcast() {
-	for w.waiters > 0 {
-		w.Signal()
+		lock.Lock()
+		w.waiters--
+		return ctx.Err()
 	}
 }
 
 // Signal() must be called under the lock
 func (w *Cond) Signal() {
-	if w.waiters < 0 {
-		panic("negative xcond counter")
+	if w.waiters > 0 {
+		select {
+		case w.notify <- struct{}{}:
+		default:
+		}
 	}
-	if w.waiters == 0 {
-		return
+}
+
+// Broadcast() must be called under the lock
+func (w *Cond) Broadcast() {
+	for range w.waiters {
+		w.Signal()
 	}
-	select {
-	case w.notify <- struct{}{}:
-	default:
-	}
-	w.waiters -= 1
 }
 
 func (w *Cond) Destroy() {
