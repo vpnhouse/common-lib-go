@@ -37,7 +37,7 @@ func round(t *testing.T, ctx context.Context, triggerInterval time.Duration, exp
 	}()
 
 	var wg sync.WaitGroup
-	for idx := 0; idx < 10; idx++ {
+	for range 10 {
 		lock.Lock()
 		wg.Add(1)
 		go func() {
