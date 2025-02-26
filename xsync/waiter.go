@@ -41,6 +41,12 @@ func (w *Cond) Broadcast() {
 
 // Signal() must be called under the lock
 func (w *Cond) Signal() {
+	if w.waiters < 0 {
+		panic("negative xcond counter")
+	}
+	if w.waiters == 0 {
+		return
+	}
 	select {
 	case w.notify <- struct{}{}:
 	default:
