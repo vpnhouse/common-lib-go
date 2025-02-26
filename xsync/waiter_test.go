@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	LoadCapacity             = 1024 * 1024 * 60
+	LoadCapacity             = 1024 * 1024
 	LoadMaxWaitInterval      = time.Microsecond
 	LoadMaxBroadcastInterval = time.Microsecond * time.Duration(100)
 )
