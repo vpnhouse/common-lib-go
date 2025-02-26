@@ -6,8 +6,9 @@ import (
 )
 
 type Cond struct {
-	locker sync.Locker
-	notify chan struct{}
+	locker  sync.Locker
+	waiters int
+	notify  chan struct{}
 }
 
 func NewCond(locker sync.Locker) *Cond {
@@ -17,7 +18,9 @@ func NewCond(locker sync.Locker) *Cond {
 	}
 }
 
+// Wait() must be called under the lock
 func (w *Cond) Wait(ctx context.Context) bool {
+	w.waiters += 1
 	w.locker.Unlock()
 	defer w.locker.Lock()
 
@@ -29,21 +32,20 @@ func (w *Cond) Wait(ctx context.Context) bool {
 	}
 }
 
+// Broadcast() must be called under the lock
 func (w *Cond) Broadcast() {
-	for {
-		if !w.Signal() {
-			return
-		}
+	for w.waiters > 0 {
+		w.Signal()
 	}
 }
 
-func (w *Cond) Signal() bool {
+// Signal() must be called under the lock
+func (w *Cond) Signal() {
 	select {
 	case w.notify <- struct{}{}:
-		return true
 	default:
-		return false
 	}
+	w.waiters -= 1
 }
 
 func (w *Cond) Destroy() {
