@@ -7,14 +7,19 @@ import (
 )
 
 func TestSetGet(t *testing.T) {
-	store := New[string, string]()
-	defer store.Stop()
+	store := New[string, string](3)
 
 	store.Set("key1", "value1", time.Minute)
 	store.Set("key2", "value2", time.Minute)
 
 	if val, ok := store.Get("key1"); !ok || val != "value1" {
 		t.Errorf("Expected value1, got %v", val)
+	}
+	if val, ok := store.Get("key1"); !ok || val != "value1" {
+		t.Errorf("Expected value1, got %v", val)
+	}
+	if val, ok := store.Get("key2"); !ok || val != "value2" {
+		t.Errorf("Expected value2, got %v", val)
 	}
 	if val, ok := store.Get("key2"); !ok || val != "value2" {
 		t.Errorf("Expected value2, got %v", val)
@@ -24,14 +29,52 @@ func TestSetGet(t *testing.T) {
 	}
 }
 
+func TestMaxSize(t *testing.T) {
+	store := New[string, string](2)
+
+	store.Set("key1", "value1", time.Minute)
+	store.Set("key2", "value2", time.Minute)
+
+	if val, ok := store.Get("key1"); !ok || val != "value1" {
+		t.Errorf("Expected value1, got %v", val)
+	}
+	if val, ok := store.Get("key1"); !ok || val != "value1" {
+		t.Errorf("Expected value1, got %v", val)
+	}
+	if val, ok := store.Get("key2"); !ok || val != "value2" {
+		t.Errorf("Expected value2, got %v", val)
+	}
+	if val, ok := store.Get("key2"); !ok || val != "value2" {
+		t.Errorf("Expected value2, got %v", val)
+	}
+	if _, ok := store.Get("key3"); ok {
+		t.Error("Expected key3 to not exist")
+	}
+
+	store.Set("key3", "value3", time.Minute)
+	if _, ok := store.Get("key1"); ok {
+		t.Error("Expected key1 to not exist")
+	}
+	if val, ok := store.Get("key2"); !ok || val != "value2" {
+		t.Errorf("Expected value2, got %v", val)
+	}
+	if val, ok := store.Get("key2"); !ok || val != "value2" {
+		t.Errorf("Expected value2, got %v", val)
+	}
+	if val, ok := store.Get("key3"); !ok || val != "value3" {
+		t.Errorf("Expected value3, got %v", val)
+	}
+	if val, ok := store.Get("key3"); !ok || val != "value3" {
+		t.Errorf("Expected value3, got %v", val)
+	}
+}
+
 func TestExpiration(t *testing.T) {
-	store := New[string, string]()
-	defer store.Stop()
+	store := New[string, string](100)
 
 	store.Set("key1", "value1", 100*time.Millisecond)
 	store.Set("key2", "value2", 200*time.Millisecond)
 
-	// Проверяем, что значения доступны до истечения TTL
 	time.Sleep(50 * time.Millisecond)
 	if val, ok := store.Get("key1"); !ok || val != "value1" {
 		t.Errorf("Expected value1, got %v", val)
@@ -40,10 +83,8 @@ func TestExpiration(t *testing.T) {
 		t.Errorf("Expected value2, got %v", val)
 	}
 
-	// Ждём, пока истечёт TTL для key1 и key2
 	time.Sleep(200 * time.Millisecond)
 
-	// Проверяем, что записи истекли
 	if _, ok := store.Get("key1"); ok {
 		t.Error("Expected key1 to be expired")
 	}
@@ -53,8 +94,7 @@ func TestExpiration(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	store := New[string, string]()
-	defer store.Stop()
+	store := New[string, string](100)
 
 	store.Set("key1", "value1", time.Minute)
 	store.Set("key2", "value2", time.Minute)
@@ -69,8 +109,7 @@ func TestDelete(t *testing.T) {
 }
 
 func TestConcurrentAccess(t *testing.T) {
-	store := New[string, int]()
-	defer store.Stop()
+	store := New[string, int](1000)
 
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -93,8 +132,7 @@ func TestConcurrentAccess(t *testing.T) {
 }
 
 func TestCleanup(t *testing.T) {
-	store := New[string, string]()
-	defer store.Stop()
+	store := New[string, string](100)
 
 	store.Set("key1", "value1", 100*time.Millisecond)
 	store.Set("key2", "value2", 200*time.Millisecond)
@@ -106,21 +144,5 @@ func TestCleanup(t *testing.T) {
 	}
 	if _, ok := store.Get("key2"); ok {
 		t.Error("Expected key2 to be expired")
-	}
-}
-
-func TestStop(t *testing.T) {
-	store := New[string, string]()
-	store.Set("key1", "value1", time.Minute)
-
-	store.Stop()
-
-	// Проверяем, что операции больше не выполняются
-	if _, ok := store.Get("key1"); ok {
-		t.Error("Expected store to be stopped")
-	}
-	store.Set("key2", "value2", time.Minute)
-	if _, ok := store.Get("key2"); ok {
-		t.Error("Expected store to be stopped")
 	}
 }

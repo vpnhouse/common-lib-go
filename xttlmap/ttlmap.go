@@ -11,20 +11,28 @@ type item[V any] struct {
 	ttl     time.Duration
 }
 
-type TTLMap[K comparable, V any] struct {
-	lock        sync.RWMutex
-	items       map[K]item[V]
-	stop        chan struct{}
-	stopped     bool
-	lastCleanup time.Time
-	cleaning    bool
+type node[K comparable, V any] struct {
+	key  K
+	item item[V]
+	prev *node[K, V]
+	next *node[K, V]
 }
 
-func New[K comparable, V any]() *TTLMap[K, V] {
+type TTLMap[K comparable, V any] struct {
+	lock        sync.RWMutex
+	items       map[K]*node[K, V]
+	head        *node[K, V]
+	tail        *node[K, V]
+	lastCleanup time.Time
+	cleaning    bool
+	maxSize     int
+}
+
+func New[K comparable, V any](maxSize int) *TTLMap[K, V] {
 	store := &TTLMap[K, V]{
-		items:       make(map[K]item[V]),
-		stop:        make(chan struct{}),
+		items:       make(map[K]*node[K, V]),
 		lastCleanup: time.Now(),
+		maxSize:     maxSize,
 	}
 	return store
 }
@@ -33,15 +41,29 @@ func (s *TTLMap[K, V]) Set(key K, value V, ttl time.Duration) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	if s.stopped {
+	if node, exists := s.items[key]; exists {
+		node.item.value = value
+		node.item.created = time.Now()
+		node.item.ttl = ttl
+		s.moveToFront(node)
 		return
 	}
 
-	s.items[key] = item[V]{
-		value:   value,
-		created: time.Now(),
-		ttl:     ttl,
+	if len(s.items) >= s.maxSize {
+		s.removeOldest()
 	}
+
+	newNode := &node[K, V]{
+		key: key,
+		item: item[V]{
+			value:   value,
+			created: time.Now(),
+			ttl:     ttl,
+		},
+	}
+
+	s.addToFront(newNode)
+	s.items[key] = newNode
 
 	if time.Since(s.lastCleanup) > time.Second && !s.cleaning {
 		s.cleaning = true
@@ -52,13 +74,7 @@ func (s *TTLMap[K, V]) Set(key K, value V, ttl time.Duration) {
 
 func (s *TTLMap[K, V]) Get(key K) (V, bool) {
 	s.lock.RLock()
-	if s.stopped {
-		s.lock.RUnlock()
-		var zero V
-		return zero, false
-	}
-
-	item, exists := s.items[key]
+	node, exists := s.items[key]
 	s.lock.RUnlock()
 
 	if !exists {
@@ -66,30 +82,34 @@ func (s *TTLMap[K, V]) Get(key K) (V, bool) {
 		return zero, false
 	}
 
-	if time.Since(item.created) > item.ttl {
+	if time.Since(node.item.created) > node.item.ttl {
 		s.lock.Lock()
 		defer s.lock.Unlock()
 
-		if item, exists := s.items[key]; exists && time.Since(item.created) > item.ttl {
-			delete(s.items, key)
+		if node, exists := s.items[key]; exists && time.Since(node.item.created) > node.item.ttl {
+			delete(s.items, node.key)
+			s.removeNode(node)
 		}
 
 		var zero V
 		return zero, false
 	}
 
-	return item.value, true
+	s.lock.Lock()
+	s.moveToFront(node)
+	s.lock.Unlock()
+
+	return node.item.value, true
 }
 
 func (s *TTLMap[K, V]) Delete(key K) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	if s.stopped {
-		return
+	if node, exists := s.items[key]; exists {
+		delete(s.items, node.key)
+		s.removeNode(node)
 	}
-
-	delete(s.items, key)
 
 	if time.Since(s.lastCleanup) > time.Second && !s.cleaning {
 		s.cleaning = true
@@ -108,8 +128,8 @@ func (s *TTLMap[K, V]) cleanupExpired() {
 	expiredKeys := make([]K, 0)
 	s.lock.RLock()
 	now := time.Now()
-	for key, item := range s.items {
-		if now.Sub(item.created) > item.ttl {
+	for key, node := range s.items {
+		if now.Sub(node.item.created) > node.item.ttl {
 			expiredKeys = append(expiredKeys, key)
 		}
 	}
@@ -119,19 +139,51 @@ func (s *TTLMap[K, V]) cleanupExpired() {
 		s.lock.Lock()
 		defer s.lock.Unlock()
 
-		now := time.Now()
 		for _, key := range expiredKeys {
-			if item, exists := s.items[key]; exists && now.Sub(item.created) > item.ttl {
-				delete(s.items, key)
+			if node, exists := s.items[key]; exists && time.Since(node.item.created) > node.item.ttl {
+				delete(s.items, node.key)
+				s.removeNode(node)
 			}
 		}
 	}
 }
 
-func (s *TTLMap[K, V]) Stop() {
-	s.lock.Lock()
-	defer s.lock.Unlock()
+func (s *TTLMap[K, V]) addToFront(node *node[K, V]) {
+	node.next = s.head
+	node.prev = nil
+	if s.head != nil {
+		s.head.prev = node
+	}
+	s.head = node
+	if s.tail == nil {
+		s.tail = node
+	}
+}
 
-	s.stopped = true
-	close(s.stop)
+func (s *TTLMap[K, V]) removeNode(node *node[K, V]) {
+	if node.prev != nil {
+		node.prev.next = node.next
+	} else {
+		s.head = node.next
+	}
+	if node.next != nil {
+		node.next.prev = node.prev
+	} else {
+		s.tail = node.prev
+	}
+}
+
+func (s *TTLMap[K, V]) moveToFront(node *node[K, V]) {
+	if node == s.head {
+		return
+	}
+	s.removeNode(node)
+	s.addToFront(node)
+}
+
+func (s *TTLMap[K, V]) removeOldest() {
+	if s.tail != nil {
+		delete(s.items, s.tail.key)
+		s.removeNode(s.tail)
+	}
 }
