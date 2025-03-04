@@ -3,13 +3,16 @@ package xcache
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/vpnhouse/common-lib-go/xrand"
 )
 
-func TestXCacheSetGet(t *testing.T) {
-	c, err := New(1, nil)
+func TestCacheSetGet(t *testing.T) {
+	c, err := New(32<<20, nil)
 	assert.NoError(t, err)
 
 	defer c.Reset()
@@ -58,7 +61,7 @@ func TestXCacheSetGet(t *testing.T) {
 	assert.Equalf(t, 0, len(v), "unexpected non-empty value obtained from cache: %q by key: %q", v, k)
 }
 
-func TestXCacheDel(t *testing.T) {
+func TestCacheDel(t *testing.T) {
 	c, err := New(1, nil)
 	assert.NoError(t, err)
 
@@ -81,7 +84,7 @@ func TestXCacheDel(t *testing.T) {
 	}
 }
 
-func TestXCacheUpdate(t *testing.T) {
+func TestCacheUpdate(t *testing.T) {
 	c, err := New(1, nil)
 	assert.NoError(t, err)
 
@@ -202,4 +205,29 @@ func BenchmarkCacheGet(b *testing.B) {
 			}
 		}
 	})
+}
+
+func TestCompositeKeys(t *testing.T) {
+	keyParts := []string{
+		// session_id
+		uuid.New().String(),
+		// installation_id
+		uuid.New().String(),
+		// user_id
+		strings.Join([]string{
+			uuid.New().String(), // project_id
+			uuid.New().String(), // authorizer_id
+			xrand.String(256),   // firebase (36) or keycloak (256)
+		}, "/"),
+	}
+
+	key := strings.Join(keyParts, ":")
+
+	c, _ := New(1, nil)
+	err := c.Set([]byte(key), []byte(key))
+	assert.NoError(t, err)
+
+	v, err := c.Get([]byte(key), false)
+	assert.NoError(t, err)
+	assert.Equal(t, v, []byte(key))
 }

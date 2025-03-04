@@ -63,42 +63,45 @@ type (
 
 // Thread-safe inmemory cache optimized for big number
 // of entries.
-type XCache struct {
+type Cache struct {
 	buckets [bucketsCount]bucket
 	onEvict OnEvict
 }
 
 // New Cache
 // If maxBytes is less than 32MB, then the minimum cache capacity is 32MB.
-func New(maxBytes int, onEvict OnEvict) (*XCache, error) {
+func New(maxBytes int, onEvict OnEvict) (*Cache, error) {
 	if maxBytes <= 0 {
 		return nil, fmt.Errorf("maxBytes must be greater than 0; got %d", maxBytes)
 	}
-	c := XCache{
+	c := Cache{
 		onEvict: onEvict,
 	}
 	maxBucketBytes := uint64((maxBytes + bucketsCount - 1) / bucketsCount)
 	for i := range c.buckets[:] {
-		c.buckets[i].Init(maxBucketBytes)
+		err := c.buckets[i].Init(maxBucketBytes)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return &c, nil
 }
 
 // Stores (k, v) in the cache with given mutator if any
-func (c *XCache) Update(k []byte, mutator Mutator) error {
+func (c *Cache) Update(k []byte, mutator Mutator) error {
 	h := xxhash.Sum64(k)
 	idx := h % bucketsCount
 	return c.buckets[idx].Update(k, h, mutator, c.onEvict)
 }
 
 // Stores (k, v) in the cache
-func (c *XCache) Set(k, v []byte) error {
+func (c *Cache) Set(k, v []byte) error {
 	h := xxhash.Sum64(k)
 	idx := h % bucketsCount
 	return c.buckets[idx].Set(k, v, h, c.onEvict)
 }
 
-func (c *XCache) Get(k []byte, noCopy ...bool) ([]byte, error) {
+func (c *Cache) Get(k []byte, noCopy ...bool) ([]byte, error) {
 	h := xxhash.Sum64(k)
 	idx := h % bucketsCount
 	noCopyVal := len(noCopy) > 0 && noCopy[0]
@@ -106,14 +109,14 @@ func (c *XCache) Get(k []byte, noCopy ...bool) ([]byte, error) {
 }
 
 // Del deletes value for the given k from the cache.
-func (c *XCache) Del(k []byte) {
+func (c *Cache) Del(k []byte) {
 	h := xxhash.Sum64(k)
 	idx := h % bucketsCount
 	c.buckets[idx].Del(h)
 }
 
 // Reset removes all the items from the cache.
-func (c *XCache) Reset() {
+func (c *Cache) Reset() {
 	var evicted *Items
 	if c.onEvict != nil {
 		evicted = newItems(0)
@@ -144,17 +147,18 @@ type bucket struct {
 	gen uint64
 }
 
-func (b *bucket) Init(maxBytes uint64) {
+func (b *bucket) Init(maxBytes uint64) error {
 	if maxBytes == 0 {
-		panic(fmt.Errorf("maxBytes cannot be zero"))
+		return fmt.Errorf("maxBytes cannot be zero")
 	}
 	if maxBytes >= maxBucketSize {
-		panic(fmt.Errorf("too big maxBytes=%d; should be smaller than %d", maxBytes, maxBucketSize))
+		return fmt.Errorf("too big maxBytes=%d; should be smaller than %d", maxBytes, maxBucketSize)
 	}
 	maxChunks := (maxBytes + chunkSize - 1) / chunkSize
 	b.chunks = make([][]byte, maxChunks)
 	b.m = make(map[uint64]uint64)
 	b.Reset(nil)
+	return nil
 }
 
 func (b *bucket) Reset(out *Items) {
