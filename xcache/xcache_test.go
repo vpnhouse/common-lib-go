@@ -106,7 +106,7 @@ func TestXCacheUpdate(t *testing.T) {
 
 func BenchmarkCacheSet(b *testing.B) {
 	const items = 1 << 16
-	c, _ := New(12 * items, nil)
+	c, _ := New(12*items, nil)
 	defer c.Reset()
 
 	b.ResetTimer()
@@ -130,9 +130,39 @@ func BenchmarkCacheSet(b *testing.B) {
 	})
 }
 
+func TestEvict(t *testing.T) {
+	testItems := map[string]string{
+		"aaa": "bbb",
+		"ccc": "ddd",
+		"fff": "eee",
+	}
+
+	evictedItems := make(map[string]string, len(testItems))
+
+	done := make(chan struct{})
+
+	onEvict := func(items *Items) {
+		for i := range items.Keys {
+			evictedItems[string(items.Keys[i])] = string(items.Values[i])
+		}
+		close(done)
+	}
+
+	c, _ := New(1, onEvict)
+	for k, v := range testItems {
+		err := c.Set([]byte(k), []byte(v))
+		assert.NoErrorf(t, err, "failed to add to cache: %s = %s", k, v)
+	}
+
+	c.Reset()
+	<-done
+
+	assert.Equal(t, testItems, evictedItems)
+}
+
 func BenchmarkCacheGet(b *testing.B) {
 	const items = 1 << 16
-	c, _ := New(12 * items, nil)
+	c, _ := New(12*items, nil)
 	defer c.Reset()
 	k := []byte("\x00\x00")
 	v := []byte("\x00\x00")
@@ -152,7 +182,7 @@ func BenchmarkCacheGet(b *testing.B) {
 
 	b.ResetTimer()
 
-	b.RunParallel(func(pb *testing.	PB) {
+	b.RunParallel(func(pb *testing.PB) {
 		k := []byte("\x00\x00")
 		v := []byte("\x00\x00")
 		for pb.Next() {

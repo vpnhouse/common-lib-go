@@ -33,8 +33,8 @@ var (
 )
 
 type Items struct {
-	Keys [][]byte
-	Vals [][]byte
+	Keys   [][]byte
+	Values [][]byte
 }
 
 func newItems(size int) *Items {
@@ -42,22 +42,24 @@ func newItems(size int) *Items {
 		return &Items{}
 	}
 	return &Items{
-		Keys: make([][]byte, 0, size),
-		Vals: make([][]byte, 0, size),
+		Keys:   make([][]byte, 0, size),
+		Values: make([][]byte, 0, size),
 	}
 }
 
 func (i *Items) Add(key []byte, val []byte) {
 	i.Keys = append(i.Keys, key)
-	i.Vals = append(i.Vals, val)
+	i.Values = append(i.Values, val)
 }
 
 func (i *Items) Count() int {
 	return len(i.Keys)
 }
 
-type OnEvict func(items *Items)
-type Mutator func(v []byte) ([]byte, bool, error)
+type (
+	OnEvict func(items *Items)
+	Mutator func(v []byte) ([]byte, bool, error)
+)
 
 // Thread-safe inmemory cache optimized for big number
 // of entries.
