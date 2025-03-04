@@ -37,6 +37,19 @@ func New[K comparable, V any](maxSize int) *TTLMap[K, V] {
 	return store
 }
 
+func (s *TTLMap[K, V]) Resize(maxSize int) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	if maxSize < s.maxSize {
+		for len(s.items) > maxSize {
+			s.removeOldest()
+		}
+	}
+
+	s.maxSize = maxSize
+}
+
 func (s *TTLMap[K, V]) Set(key K, value V, ttl time.Duration) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -49,7 +62,7 @@ func (s *TTLMap[K, V]) Set(key K, value V, ttl time.Duration) {
 		return
 	}
 
-	if len(s.items) >= s.maxSize {
+	for len(s.items) >= s.maxSize {
 		s.removeOldest()
 	}
 

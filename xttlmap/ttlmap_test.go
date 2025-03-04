@@ -146,3 +146,19 @@ func TestCleanup(t *testing.T) {
 		t.Error("Expected key2 to be expired")
 	}
 }
+
+func TestResize(t *testing.T) {
+	store := New[string, string](3)
+
+	store.Set("key1", "value1", 100*time.Millisecond)
+	store.Set("key2", "value2", 200*time.Millisecond)
+
+	store.Resize(1)
+
+	if _, ok := store.Get("key1"); ok {
+		t.Error("Expected key1 to be removed")
+	}
+	if val, ok := store.Get("key2"); !ok || val != "value2" {
+		t.Errorf("Expected value2, got %v", val)
+	}
+}
