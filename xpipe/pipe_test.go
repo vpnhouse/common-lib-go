@@ -3,6 +3,7 @@ package xpipe
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"os"
 	"sync"
 	"testing"
@@ -99,6 +100,8 @@ func once(t *testing.T, rlen, wlen lenGetnType) {
 }
 
 func TestPerByte(t *testing.T) {
+	fmt.Println("Byte-transfer test")
+
 	once(t,
 		func() int { return 1 },
 		func() int { return 1 },
@@ -106,6 +109,7 @@ func TestPerByte(t *testing.T) {
 }
 
 func TestDeadlock(t *testing.T) {
+	fmt.Println("Deaclock test")
 	wg := sync.WaitGroup{}
 
 	pipe, err := New()
@@ -144,6 +148,7 @@ func TestDeadlock(t *testing.T) {
 
 func TestGeneric(t *testing.T) {
 	for idx := 0; idx < testRounds; idx++ {
+		fmt.Println("Generic test, Round", idx, "out of", testRounds)
 		once(t,
 			func() int { return rand.Intn(readMaxSize-1) + 1 },
 			func() int { return rand.Intn(writeMaxSize-1) + 1 },
