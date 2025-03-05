@@ -411,7 +411,7 @@ func (b *bucket) Update(k []byte, h uint64, mutator Mutator, onEvict OnEvict) er
 		if err != nil {
 			return err
 		}
-		if update || errors.Is(err, ErrNoData) {
+		if update {
 			return b.setLocked(k, v, h, onEvict)
 		}
 	}
