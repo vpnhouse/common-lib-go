@@ -1,31 +1,37 @@
 package xpipe
 
 import (
+	"context"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/vpnhouse/common-lib-go/xsync"
 )
 
 var MaxBufferSize = 16384
 
 type XPipe struct {
+	ctx context.Context
+
 	closed bool
 	lock   *sync.Mutex
 	buffer []byte
 
-	rTrigger *sync.Cond
-	wTrigger *sync.Cond
+	rTrigger *xsync.Cond
+	wTrigger *xsync.Cond
 
 	rdeadline time.Time
 	wdeadline time.Time
 }
 
-func New() (*XPipe, error) {
+func New(ctx context.Context) (*XPipe, error) {
 	lock := &sync.Mutex{}
 	pipe := &XPipe{
+		ctx:      ctx,
 		lock:     lock,
-		rTrigger: sync.NewCond(lock),
-		wTrigger: sync.NewCond(lock),
+		rTrigger: xsync.NewCond(),
+		wTrigger: xsync.NewCond(),
 	}
 
 	return pipe, nil
@@ -110,14 +116,7 @@ func (p *XPipe) Close() error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	if p.closed {
-		return os.ErrClosed
-	}
-	p.closed = true
-	p.rTrigger.Broadcast()
-	p.wTrigger.Broadcast()
-
-	return nil
+	return p.close()
 }
 
 func (p *XPipe) SetDeadline(t time.Time) error {
@@ -160,7 +159,18 @@ func isDeadlineHappened(deadline *time.Time) bool {
 	return time.Now().After(*deadline)
 }
 
-func (p *XPipe) wait(trigger *sync.Cond, deadline *time.Time) error {
+func (p *XPipe) close() error {
+	if p.closed {
+		return os.ErrClosed
+	}
+	p.closed = true
+	p.rTrigger.Broadcast()
+	p.wTrigger.Broadcast()
+
+	return nil
+}
+
+func (p *XPipe) wait(trigger *xsync.Cond, deadline *time.Time) error {
 	if isDeadlineHappened(deadline) {
 		return os.ErrDeadlineExceeded
 	}
@@ -169,7 +179,11 @@ func (p *XPipe) wait(trigger *sync.Cond, deadline *time.Time) error {
 		return os.ErrClosed
 	}
 
-	trigger.Wait()
+	err := trigger.Wait(p.ctx, p.lock)
+	if err != nil {
+		p.close()
+		return err
+	}
 
 	if p.closed {
 		return os.ErrClosed

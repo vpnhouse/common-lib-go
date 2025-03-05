@@ -2,6 +2,7 @@ package xpipe
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -21,10 +22,12 @@ const (
 
 	writeMaxSize = 65536
 	readMaxSize  = 65536
+	testTimeout  = 20 * time.Second
 )
 
 var (
 	randInstance = rand.New(rand.NewSource(initialSeed))
+	ctx, _       = context.WithTimeout(context.Background(), testTimeout)
 )
 
 type lenGetnType func() int
@@ -36,7 +39,7 @@ func once(t *testing.T, rlen, wlen lenGetnType) {
 	assert.Nil(t, err)
 	assert.Equal(t, messageSize, n)
 
-	pipe, err := New()
+	pipe, err := New(ctx)
 	assert.Nil(t, err)
 
 	wg := sync.WaitGroup{}
@@ -112,7 +115,7 @@ func TestDeadlock(t *testing.T) {
 	fmt.Println("Deaclock test")
 	wg := sync.WaitGroup{}
 
-	pipe, err := New()
+	pipe, err := New(ctx)
 	assert.Nil(t, err)
 	wg.Add(1)
 	go func() {
@@ -129,7 +132,7 @@ func TestDeadlock(t *testing.T) {
 	assert.ErrorIs(t, err, os.ErrClosed)
 	wg.Wait()
 
-	pipe, err = New()
+	pipe, err = New(ctx)
 	assert.Nil(t, err)
 	wg.Add(1)
 	go func() {
