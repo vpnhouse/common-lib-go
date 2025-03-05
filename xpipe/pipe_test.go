@@ -150,11 +150,41 @@ func TestDeadlock(t *testing.T) {
 }
 
 func TestGeneric(t *testing.T) {
+	fmt.Println("Random size read/write test in", testRounds, "rounds")
 	for idx := 0; idx < testRounds; idx++ {
-		fmt.Println("Generic test, Round", idx, "out of", testRounds)
 		once(t,
 			func() int { return rand.Intn(readMaxSize-1) + 1 },
 			func() int { return rand.Intn(writeMaxSize-1) + 1 },
 		)
 	}
+}
+
+func TestPerformance(t *testing.T) {
+	ctx, _ := context.WithTimeout(context.Background(), time.Second)
+	p, err := New(ctx)
+	assert.Nil(t, err)
+
+	src := make([]byte, 1001)
+	dst := make([]byte, 1000)
+	received := 0
+	go func() {
+		for {
+			n, err := p.Read(dst)
+			received += n
+			if err != nil {
+				return
+			}
+		}
+	}()
+
+	for {
+		_, err := p.Write(src)
+		if err != nil {
+			break
+		}
+	}
+
+	assert.Greater(t, received, 10000000)
+
+	fmt.Println("Performance test:", received/1000000, "MBps")
 }
