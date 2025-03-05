@@ -19,15 +19,15 @@ var (
 )
 
 type Instance struct {
-	pmap   atomic.Pointer[sync.Map]
-	nextId int
+	pmap atomic.Pointer[sync.Map]
+	id   *idType
 }
 
 func NewConnMgr() *Instance {
 	m := &Instance{
-		nextId: connMinimalID,
+		id: newId(connMinimalID, connMaximalID),
 	}
-	m.switchMap()
+	m.pmap.Store(&sync.Map{})
 
 	return m
 }
@@ -44,18 +44,10 @@ func (m *Instance) Lookup(id int) (net.Conn, error) {
 }
 
 func (m *Instance) Register(c net.Conn) (int, error) {
-	incId := func() {
-		m.nextId += 1
-		if m.nextId >= connMaximalID || m.nextId < connMinimalID {
-			m.nextId = connMinimalID
-		}
-	}
-
 	connById := m.pmap.Load()
 	for {
-		id := m.nextId
+		id := m.id.shift()
 		_, busy := connById.LoadOrStore(id, c)
-		incId()
 
 		if busy {
 			continue
@@ -77,14 +69,10 @@ func (m *Instance) Unregister(id int) error {
 }
 
 func (m *Instance) CloseAll() {
-	connById := m.switchMap()
+	connById := m.pmap.Swap(&sync.Map{})
 
 	connById.Range(func(id, c any) bool {
 		c.(net.Conn).Close()
 		return true
 	})
-}
-
-func (m *Instance) switchMap() *sync.Map {
-	return m.pmap.Swap(&sync.Map{})
 }
