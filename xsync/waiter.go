@@ -12,7 +12,7 @@ type Cond struct {
 
 func NewCond() *Cond {
 	return &Cond{
-		notify: make(chan struct{}),
+		notify: make(chan struct{}, 1),
 	}
 }
 
