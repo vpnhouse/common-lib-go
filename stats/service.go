@@ -75,15 +75,17 @@ func toValue(session *Session, drx, dtx uint64) []byte {
 	// [2] len(UserID) +
 	// [.] len(UserID)
 
+	d := make([]byte, 8+8+8+2+len(session.InstallationID)+2+len(session.UserID))
+
 	i := 0
 	// Delta Rx, Tx
-	d := make([]byte, 8+8+8+2+len(session.InstallationID)+2+len(session.UserID))
 	RxTx(drx, dtx, d[i:i+16])
 	i += 16
 
 	// Start timestamp
 	now := Now()
 	SetUint64(now, d[i:i+8])
+	i += 8
 
 	// Installation ID
 	installationIDLen := len(session.InstallationID)
