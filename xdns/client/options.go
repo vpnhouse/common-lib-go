@@ -3,7 +3,7 @@ package client
 import (
 	"time"
 
-	"github.com/vpnhouse/common-lib-go/pkg/protect"
+	"github.com/vpnhouse/common-lib-go/protect"
 )
 
 var Defaults = &options{

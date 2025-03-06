@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/miekg/dns"
-	"github.com/vpnhouse/common-lib-go/pkg/protect"
+	"github.com/vpnhouse/common-lib-go/protect"
 	"go.uber.org/zap"
 )
 
