@@ -1,9 +1,9 @@
-package xdns
+package client
 
 import (
 	"time"
 
-	"github.com/vpnhouse/iprose-go/pkg/protect"
+	"github.com/vpnhouse/common-lib-go/pkg/protect"
 )
 
 var Defaults = &options{

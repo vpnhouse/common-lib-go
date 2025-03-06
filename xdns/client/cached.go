@@ -1,4 +1,4 @@
-package xdns
+package client
 
 import (
 	"context"

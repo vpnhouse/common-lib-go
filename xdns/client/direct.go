@@ -1,4 +1,4 @@
-package xdns
+package client
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/miekg/dns"
-	"github.com/vpnhouse/iprose-go/pkg/protect"
+	"github.com/vpnhouse/common-lib-go/pkg/protect"
 	"go.uber.org/zap"
 )
 
