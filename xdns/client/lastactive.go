@@ -1,6 +1,7 @@
 package client
 
 import (
+	"container/list"
 	"context"
 	"sync"
 )
@@ -12,12 +13,12 @@ type lastActiveEntity struct {
 
 type LastActiveResolver struct {
 	lock     sync.RWMutex
-	entities []*lastActiveEntity
+	entities *list.List
 }
 
 func NewLastActive(opst *options) *LastActiveResolver {
 	return &LastActiveResolver{
-		entities: make([]*lastActiveEntity, 0),
+		entities: list.New(),
 	}
 }
 
@@ -34,10 +35,11 @@ func (r *LastActiveResolver) add(tag string, resolver Resolver, replace bool) er
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	for idx, entity := range r.entities {
+	for e := r.entities.Front(); e != nil; e = e.Next() {
+		entity := e.Value.(*lastActiveEntity)
 		if entity.tag == tag {
 			if replace {
-				r.entities[idx].resolver = resolver
+				entity.resolver = resolver
 				return nil
 			} else {
 				return ErrExists
@@ -45,7 +47,7 @@ func (r *LastActiveResolver) add(tag string, resolver Resolver, replace bool) er
 		}
 	}
 
-	r.entities = append(r.entities, &lastActiveEntity{
+	r.entities.PushBack(&lastActiveEntity{
 		tag, resolver,
 	})
 	return nil
@@ -55,9 +57,10 @@ func (r *LastActiveResolver) Unset(tag string) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	for idx, entity := range r.entities {
+	for e := r.entities.Front(); e != nil; e = e.Next() {
+		entity := e.Value.(*lastActiveEntity)
 		if entity.tag == tag {
-			r.entities = append(r.entities[:idx], r.entities[idx+1:]...)
+			r.entities.Remove(e)
 			return nil
 		}
 	}
@@ -68,28 +71,24 @@ func (r *LastActiveResolver) Unset(tag string) error {
 func (r *LastActiveResolver) Lookup(ctx context.Context, request *Request) (*Response, error) {
 	r.lock.RLock()
 
-	for idx, entity := range r.entities {
+	for e := r.entities.Front(); e != nil; e = e.Next() {
+		entity := e.Value.(*lastActiveEntity)
+
 		result, err := entity.resolver.Lookup(ctx, request)
 		if err == nil && result.Successful() {
+			if e == r.entities.Front() {
+				r.lock.RUnlock()
+				return result, nil
+			}
+
 			r.lock.RUnlock()
 			r.lock.Lock()
-			moveToTop(r.entities, idx)
+			r.entities.MoveToFront(e)
 			r.lock.Unlock()
 			return result, nil
 		}
-
 	}
 
 	r.lock.RUnlock()
 	return nil, ErrNoResponse
-}
-
-func moveToTop[T any](slice []T, index int) {
-	if len(slice) <= 2 {
-		return
-	}
-
-	first := slice[0]
-	slice[0] = slice[index]
-	slice[index] = first
 }
