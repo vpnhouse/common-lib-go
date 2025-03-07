@@ -4,14 +4,14 @@
  * license that can be found in the LICENSE file.
  */
 
-package xdns
+package server
 
 import (
 	"fmt"
 	"strings"
 
 	"github.com/coredns/caddy"
-	"github.com/vpnhouse/common-lib-go/xdns/plugin"
+	"github.com/vpnhouse/common-lib-go/xdns/server/plugin"
 
 	// Include all plugins.
 	_ "github.com/coredns/coredns/plugin/any"
