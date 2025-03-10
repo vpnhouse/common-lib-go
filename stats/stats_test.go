@@ -19,11 +19,9 @@ func TestService(t *testing.T) {
 	var reports []*Report[testData]
 	s, err := New(
 		time.Second,
-		func(report *Report[testData], extra Extra) {
+		func(report *Report[testData]) {
 			reports = append(reports, report)
-			assert.Nil(t, extra)
 		},
-		nil,
 	)
 	assert.NoError(t, err)
 
@@ -66,10 +64,9 @@ func TestService(t *testing.T) {
 
 func TestServiceEmptyData(t *testing.T) {
 	var reports []*Report[testData]
-	s, err := New(time.Second, func(report *Report[testData], extra Extra) {
+	s, err := New(time.Second, func(report *Report[testData]) {
 		reports = append(reports, report)
-		assert.Equal(t, Extra{"a": "b"}, extra)
-	}, Extra{"a": "b"})
+	})
 	assert.NoError(t, err)
 
 	sessionID := uuid.New()
