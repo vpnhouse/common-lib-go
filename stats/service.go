@@ -52,9 +52,9 @@ func parse[T any](k []byte, v []byte, nowT uint64) *Report[T] {
 	i += 16
 
 	// Start collecting timestamp in seconds
-	startT := ParseUint64(v[i : i+8])
+	r.Created = ParseUint64(v[i : i+8])
 	i += 8
-	r.DeltaT = nowT - startT
+	r.DeltaT = nowT - r.Created
 
 	// Data
 	dataLen := int(ParseUint16(v[i : i+2]))
