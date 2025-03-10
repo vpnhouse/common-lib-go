@@ -52,3 +52,12 @@ func (r *Response) Successful() bool {
 func (r *Response) Expired() bool {
 	return time.Since(r.CreatedAt) > r.TTL
 }
+
+func (r *Response) AddressesAsStrings() []string {
+	result := make([]string, len(r.Addresses))
+	for idx, addr := range r.Addresses {
+		result[idx] = addr.String()
+	}
+
+	return result
+}
