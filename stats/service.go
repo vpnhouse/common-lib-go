@@ -11,7 +11,7 @@ import (
 const maxBytes = 32 << 20 // 32 Mb
 
 type Service[T any] struct {
-	sessions *xcache.Cache // session_id -> rx, tx, timestamp, session {session_id, installation_id, user_id}
+	sessions *xcache.Cache // session_id -> rx, tx, timestamp, data {installation_id, user_id, country etc.}
 	onFlush  OnFlush[T]
 }
 
