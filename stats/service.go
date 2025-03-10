@@ -13,6 +13,7 @@ const maxBytes = 32 << 20 // 32 Mb
 type Service struct {
 	sessions *xcache.Cache // session_id -> rx, tx, timestamp, session {session_id, installation_id, user_id}
 	onFlush  OnFlush
+	extra    Extra
 }
 
 type Session struct {
@@ -28,7 +29,9 @@ type Report struct {
 	DeltaT  uint64
 }
 
-type OnFlush func(report *Report)
+type Extra map[string]string
+
+type OnFlush func(report *Report, extra Extra)
 
 var Now func() uint64 = func() uint64 {
 	return uint64(time.Now().Unix())
@@ -103,9 +106,10 @@ func toValue(session *Session, drx, dtx uint64) []byte {
 	return d
 }
 
-func New(flushInterval time.Duration, onFlush OnFlush) (*Service, error) {
+func New(flushInterval time.Duration, onFlush OnFlush, extra Extra) (*Service, error) {
 	s := &Service{
 		onFlush: onFlush,
+		extra:   extra,
 	}
 	var err error
 	s.sessions, err = xcache.New(maxBytes, s.onEvict)
@@ -138,6 +142,6 @@ func (s *Service) onEvict(evicted *xcache.Items) {
 	now := Now()
 	for i := range evicted.Values {
 		r := parse(evicted.Keys[i], evicted.Values[i], now)
-		s.onFlush(r)
+		s.onFlush(r, s.extra)
 	}
 }

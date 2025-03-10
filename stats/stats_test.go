@@ -12,9 +12,14 @@ import (
 
 func TestService(t *testing.T) {
 	var reports []*Report
-	s, err := New(time.Second, func(report *Report) {
-		reports = append(reports, report)
-	})
+	s, err := New(
+		time.Second,
+		func(report *Report, extra Extra) {
+			reports = append(reports, report)
+			assert.Nil(t, extra)
+		},
+		nil,
+	)
 	assert.NoError(t, err)
 
 	sessionID := uuid.New()
@@ -55,9 +60,10 @@ func TestService(t *testing.T) {
 
 func TestServiceEmptyData(t *testing.T) {
 	var reports []*Report
-	s, err := New(time.Second, func(report *Report) {
+	s, err := New(time.Second, func(report *Report, extra Extra) {
 		reports = append(reports, report)
-	})
+		assert.Equal(t, Extra{"a": "b"}, extra)
+	}, Extra{"a": "b"})
 	assert.NoError(t, err)
 
 	sessionID := uuid.New()
