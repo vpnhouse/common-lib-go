@@ -8,24 +8,28 @@ import (
 	"go.uber.org/zap"
 )
 
-type CountryResolver struct {
+type GeoInfo struct {
+	Country string
+}
+
+type GeoResolver struct {
 	*Instance
 	CDNSecrets map[string]string
 }
 
-func (s *CountryResolver) ClientCountry(r *http.Request) string {
+func (s *GeoResolver) ClientInfoFromRequest(r *http.Request) GeoInfo {
 	if s == nil || s.Instance == nil {
-		return ""
+		return GeoInfo{}
 	}
 
 	ip := GetRemoteIP(r, WithIPParser(CDNSecretIPParser(s.CDNSecrets), GetRemoteAddr))
 	if ip == "" {
-		return ""
+		return GeoInfo{}
 	}
 
 	addr := net.ParseIP(ip)
 	if addr == nil {
-		return ""
+		return GeoInfo{}
 	}
 
 	country, err := s.Instance.GetCountry(addr)
@@ -33,5 +37,7 @@ func (s *CountryResolver) ClientCountry(r *http.Request) string {
 		zap.L().Error("failed to get country by ip", zap.String("ip", ip), zap.Error(err))
 	}
 
-	return strings.ToLower(country)
+	return GeoInfo{
+		Country: strings.ToLower(country),
+	}
 }
