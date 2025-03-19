@@ -57,8 +57,9 @@ func (i *Items) Count() int {
 }
 
 type (
-	OnEvict func(items *Items)
-	Mutator func(v []byte) ([]byte, bool, error)
+	OnEvict  func(items *Items)
+	Mutator  func(v []byte) ([]byte, bool, error)
+	Provider func() ([]byte, error)
 )
 
 // Thread-safe inmemory cache optimized for big number
@@ -92,6 +93,13 @@ func (c *Cache) Update(k []byte, mutator Mutator) error {
 	h := xxhash.Sum64(k)
 	idx := h % bucketsCount
 	return c.buckets[idx].Update(k, h, mutator, c.onEvict)
+}
+
+// Gets or Set and return (k, v) in the cache with given mutator if any
+func (c *Cache) GetSet(k []byte, provider Provider) ([]byte, error) {
+	h := xxhash.Sum64(k)
+	idx := h % bucketsCount
+	return c.buckets[idx].GetSet(k, h, provider, c.onEvict)
 }
 
 // Stores (k, v) in the cache
@@ -416,6 +424,28 @@ func (b *bucket) Update(k []byte, h uint64, mutator Mutator, onEvict OnEvict) er
 		}
 	}
 	return err
+}
+
+func (b *bucket) GetSet(k []byte, h uint64, provider Provider, onEvict OnEvict) ([]byte, error) {
+	b.l.Lock()
+	defer b.l.Unlock()
+
+	v, err := b.getLocked(k, h, false)
+	if err == nil {
+		return v, nil
+	}
+	if errors.Is(err, ErrNoData) {
+		v, err := provider()
+		if err != nil {
+			return nil, err
+		}
+		err = b.setLocked(k, v, h, onEvict)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	return nil, err
 }
 
 func (b *bucket) Del(h uint64) {
