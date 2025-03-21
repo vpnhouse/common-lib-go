@@ -28,8 +28,6 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/vishvananda/netlink v1.1.0
 	github.com/vpnhouse/api v0.0.0-20240710130147-abe1c9a47ae5
-	github.com/vpnhouse/tunnel v0.4.1-0.20241016051214-8334075fd102
-	go.etcd.io/etcd/client/v3 v3.5.2
 	go.uber.org/zap v1.25.0
 	golang.org/x/net v0.17.0
 	golang.org/x/sys v0.13.0
@@ -40,6 +38,7 @@ require (
 )
 
 require (
+	github.com/ziutek/mymysql v1.5.4 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 )
@@ -54,16 +53,13 @@ require (
 	github.com/apparentlymart/go-cidr v1.1.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.1 // indirect
-	github.com/cespare/xxhash/v2 v2.2.0 // indirect
-	github.com/coreos/go-semver v0.3.0 // indirect
-	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
+	github.com/cespare/xxhash/v2 v2.2.0
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deepmap/oapi-codegen v1.9.1 // indirect
 	github.com/dgraph-io/ristretto v0.1.0 // indirect
 	github.com/dnstap/golang-dnstap v0.4.0 // indirect
 	github.com/farsightsec/golang-framestream v0.3.0 // indirect
 	github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568 // indirect
-	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-cmp v0.5.7 // indirect
@@ -87,8 +83,6 @@ require (
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/tinylib/msgp v1.1.2 // indirect
 	github.com/vishvananda/netns v0.0.0-20191106174202-0a2b9b5464df // indirect
-	go.etcd.io/etcd/api/v3 v3.5.2 // indirect
-	go.etcd.io/etcd/client/pkg/v3 v3.5.2 // indirect
 	golang.org/x/crypto v0.14.0 // indirect
 	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/sync v0.6.0
