@@ -51,6 +51,7 @@ var (
 	EEntityTooLargeType        = &ErrorType{http.StatusRequestEntityTooLarge, openapi.ErrorResultTOOLONG}
 	ETooEarlyType              = &ErrorType{http.StatusTooEarly, openapi.ErrorResultTOOEARLY}
 	ENoLicenseType             = &ErrorType{http.StatusForbidden, openapi.ErrorResultNOLICENSE}
+	ELimitExceededType         = &ErrorType{http.StatusForbidden, openapi.ErrorResultLIMITEXCEEDED}
 )
 
 func EInternalError(description string, err error, fields ...zap.Field) *Error {
@@ -163,6 +164,10 @@ func ETooEarly(description string, err error, fields ...zap.Field) *Error {
 
 func ENoLicense(msg string) *Error {
 	return newError(ENoLicenseType, msg, defaultSerializer, nil, nil)
+}
+
+func ENLimitExceeded(msg string) *Error {
+	return newError(ELimitExceededType, msg, defaultSerializer, nil, nil)
 }
 
 type errorSerializerFunc func(error *Error) (int, []byte)
