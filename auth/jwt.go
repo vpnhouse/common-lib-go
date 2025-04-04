@@ -44,6 +44,7 @@ type ClientClaims struct {
 	PlatformType   string                 `json:"platform_type,omitempty"`
 	Entitlements   map[string]interface{} `json:"entitlements,omitempty"`
 	ClientFeatures map[string]interface{} `json:"client_features,omitempty"`
+	DailyLimit     int64                  `json:"daily_limit,omitempty"`
 	jwt.StandardClaims
 }
 
