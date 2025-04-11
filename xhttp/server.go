@@ -16,15 +16,17 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	chi_middleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	metrics "github.com/slok/go-http-metrics/metrics/prometheus"
 	"github.com/slok/go-http-metrics/middleware"
 	middlewarestd "github.com/slok/go-http-metrics/middleware/std"
 	openapi "github.com/vpnhouse/api/go/server/common"
-	"github.com/vpnhouse/common-lib-go/xerror"
 	"go.uber.org/zap"
 	"golang.org/x/net/idna"
+
+	"github.com/vpnhouse/common-lib-go/xerror"
 )
 
 // initialize the measuring middleware only once
@@ -89,6 +91,12 @@ func WithLogger() Option {
 func WithSSL(cfg *tls.Config) Option {
 	return func(w *Server) {
 		w.tlsConfig = cfg
+	}
+}
+
+func WithPprof() Option {
+	return func(w *Server) {
+		w.router.Mount("/debug", chi_middleware.Profiler())
 	}
 }
 
