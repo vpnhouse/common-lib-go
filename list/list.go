@@ -1,134 +1,235 @@
-// Package list provides an implementation of a doubly-linked list with a front
-// and back. The individual nodes of the list are publicly exposed so that the
-// user can have fine-grained control over the list.
+// Copyright 2009 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+// Package list implements a doubly linked list.
+//
+// To iterate over a list (where l is a *List):
+//
+//	for e := l.Front(); e != nil; e = e.Next() {
+//		// do something with e.Value
+//	}
 package list
 
-// List implements a doubly-linked list.
+// Element is an element of a linked list.
+type Element[V any] struct {
+	// Next and previous pointers in the doubly-linked list of elements.
+	// To simplify the implementation, internally a list l is implemented
+	// as a ring, such that &l.root is both the next element of the last
+	// list element (l.Back()) and the previous element of the first list
+	// element (l.Front()).
+	next, prev *Element[V]
+
+	// The list to which this element belongs.
+	list *List[V]
+
+	// The value stored with this element.
+	Value V
+}
+
+// Next returns the next list element or nil.
+func (e *Element[V]) Next() *Element[V] {
+	if p := e.next; e.list != nil && p != &e.list.root {
+		return p
+	}
+	return nil
+}
+
+// Prev returns the previous list element or nil.
+func (e *Element[V]) Prev() *Element[V] {
+	if p := e.prev; e.list != nil && p != &e.list.root {
+		return p
+	}
+	return nil
+}
+
+// List represents a doubly linked list.
+// The zero value for List is an empty list ready to use.
 type List[V any] struct {
-	Front, Back *Node[V]
+	root Element[V] // sentinel list element, only &root, root.prev, and root.next are used
+	len  int        // current list length excluding (this) sentinel element
 }
 
-// Node is a node in the linked list.
-type Node[V any] struct {
-	Value      V
-	Prev, Next *Node[V]
+// Init initializes or clears list l.
+func (l *List[V]) Init() *List[V] {
+	l.root.next = &l.root
+	l.root.prev = &l.root
+	l.len = 0
+	return l
 }
 
-// New returns an empty linked list.
-func New[V any]() *List[V] {
-	return &List[V]{}
-}
+// New returns an initialized list.
+func New[V any]() *List[V] { return new(List[V]).Init() }
 
-// PushBack adds 'v' to the end of the list.
-func (l *List[V]) PushBack(v V) {
-	l.PushBackNode(&Node[V]{
-		Value: v,
-	})
-}
+// Len returns the number of elements of list l.
+// The complexity is O(1).
+func (l *List[V]) Len() int { return l.len }
 
-// PushFront adds 'v' to the beginning of the list.
-func (l *List[V]) PushFront(v V) {
-	l.PushFrontNode(&Node[V]{
-		Value: v,
-	})
-}
-
-// PushBackNode adds the node 'n' to the back of the list.
-func (l *List[V]) PushBackNode(n *Node[V]) {
-	n.Next = nil
-	n.Prev = l.Back
-	if l.Back != nil {
-		l.Back.Next = n
-	} else {
-		l.Front = n
+// Front returns the first element of list l or nil if the list is empty.
+func (l *List[V]) Front() *Element[V] {
+	if l.len == 0 {
+		return nil
 	}
-	l.Back = n
+	return l.root.next
 }
 
-// PushFrontNode adds the node 'n' to the front of the list.
-func (l *List[V]) PushFrontNode(n *Node[V]) {
-	n.Next = l.Front
-	n.Prev = nil
-	if l.Front != nil {
-		l.Front.Prev = n
-	} else {
-		l.Back = n
+// Back returns the last element of list l or nil if the list is empty.
+func (l *List[V]) Back() *Element[V] {
+	if l.len == 0 {
+		return nil
 	}
-	l.Front = n
+	return l.root.prev
 }
 
-// InsertAfter adds 'next' into the list after 'n'. Returns the added node.
-func (l *List[V]) InsertAfter(n *Node[V], next *Node[V]) *Node[V] {
-	next.Next = n.Next
-	next.Prev = n
-	if n.Next != nil {
-		n.Next.Prev = next
-	} else {
-		l.Back = next
-	}
-	n.Next = next
-	return next
-}
-
-// InsertBefore adds 'prev' into the list before 'n'. Returns the added node.
-func (l *List[V]) InsertBefore(n *Node[V], prev *Node[V]) *Node[V] {
-	prev.Next = n
-	prev.Prev = n.Prev
-	if n.Prev != nil {
-		n.Prev.Next = prev
-	} else {
-		l.Front = prev
-	}
-	n.Prev = prev
-	return prev
-}
-
-// Remove removes the node 'n' from the list.
-func (l *List[V]) Remove(n *Node[V]) {
-	if n.Next != nil {
-		n.Next.Prev = n.Prev
-	} else {
-		l.Back = n.Prev
-	}
-	if n.Prev != nil {
-		n.Prev.Next = n.Next
-	} else {
-		l.Front = n.Next
+// lazyInit lazily initializes a zero List value.
+func (l *List[V]) lazyInit() {
+	if l.root.next == nil {
+		l.Init()
 	}
 }
 
-// Each calls 'fn' on every element from this node onward in the list.
-func (n *Node[V]) Each(fn func(val V)) {
-	node := n
-	for node != nil {
-		fn(node.Value)
-		node = node.Next
+// insert inserts e after at, increments l.len, and returns e.
+func (l *List[V]) insert(e, at *Element[V]) *Element[V] {
+	e.prev = at
+	e.next = at.next
+	e.prev.next = e
+	e.next.prev = e
+	e.list = l
+	l.len++
+	return e
+}
+
+// insertValue is a convenience wrapper for insert(&Element{Value: v}, at).
+func (l *List[V]) insertValue(v V, at *Element[V]) *Element[V] {
+	return l.insert(&Element[V]{Value: v}, at)
+}
+
+// remove removes e from its list, decrements l.len
+func (l *List[V]) remove(e *Element[V]) {
+	e.prev.next = e.next
+	e.next.prev = e.prev
+	e.next = nil // avoid memory leaks
+	e.prev = nil // avoid memory leaks
+	e.list = nil
+	l.len--
+}
+
+// move moves e to next to at.
+func (l *List[V]) move(e, at *Element[V]) {
+	if e == at {
+		return
+	}
+	e.prev.next = e.next
+	e.next.prev = e.prev
+
+	e.prev = at
+	e.next = at.next
+	e.prev.next = e
+	e.next.prev = e
+}
+
+// Remove removes e from l if e is an element of list l.
+// It returns the element value e.Value.
+// The element must not be nil.
+func (l *List[V]) Remove(e *Element[V]) any {
+	if e.list == l {
+		// if e.list == l, l must have been initialized when e was inserted
+		// in l or l == nil (e is a zero Element) and l.remove will crash
+		l.remove(e)
+	}
+	return e.Value
+}
+
+// PushFront inserts a new element e with value v at the front of list l and returns e.
+func (l *List[V]) PushFront(v V) *Element[V] {
+	l.lazyInit()
+	return l.insertValue(v, &l.root)
+}
+
+// PushBack inserts a new element e with value v at the back of list l and returns e.
+func (l *List[V]) PushBack(v V) *Element[V] {
+	l.lazyInit()
+	return l.insertValue(v, l.root.prev)
+}
+
+// InsertBefore inserts a new element e with value v immediately before mark and returns e.
+// If mark is not an element of l, the list is not modified.
+// The mark must not be nil.
+func (l *List[V]) InsertBefore(v V, mark *Element[V]) *Element[V] {
+	if mark.list != l {
+		return nil
+	}
+	// see comment in List.Remove about initialization of l
+	return l.insertValue(v, mark.prev)
+}
+
+// InsertAfter inserts a new element e with value v immediately after mark and returns e.
+// If mark is not an element of l, the list is not modified.
+// The mark must not be nil.
+func (l *List[V]) InsertAfter(v V, mark *Element[V]) *Element[V] {
+	if mark.list != l {
+		return nil
+	}
+	// see comment in List.Remove about initialization of l
+	return l.insertValue(v, mark)
+}
+
+// MoveToFront moves element e to the front of list l.
+// If e is not an element of l, the list is not modified.
+// The element must not be nil.
+func (l *List[V]) MoveToFront(e *Element[V]) {
+	if e.list != l || l.root.next == e {
+		return
+	}
+	// see comment in List.Remove about initialization of l
+	l.move(e, &l.root)
+}
+
+// MoveToBack moves element e to the back of list l.
+// If e is not an element of l, the list is not modified.
+// The element must not be nil.
+func (l *List[V]) MoveToBack(e *Element[V]) {
+	if e.list != l || l.root.prev == e {
+		return
+	}
+	// see comment in List.Remove about initialization of l
+	l.move(e, l.root.prev)
+}
+
+// MoveBefore moves element e to its new position before mark.
+// If e or mark is not an element of l, or e == mark, the list is not modified.
+// The element and mark must not be nil.
+func (l *List[V]) MoveBefore(e, mark *Element[V]) {
+	if e.list != l || e == mark || mark.list != l {
+		return
+	}
+	l.move(e, mark.prev)
+}
+
+// MoveAfter moves element e to its new position after mark.
+// If e or mark is not an element of l, or e == mark, the list is not modified.
+// The element and mark must not be nil.
+func (l *List[V]) MoveAfter(e, mark *Element[V]) {
+	if e.list != l || e == mark || mark.list != l {
+		return
+	}
+	l.move(e, mark)
+}
+
+// PushBackList inserts a copy of another list at the back of list l.
+// The lists l and other may be the same. They must not be nil.
+func (l *List[V]) PushBackList(other *List[V]) {
+	l.lazyInit()
+	for i, e := other.Len(), other.Front(); i > 0; i, e = i-1, e.Next() {
+		l.insertValue(e.Value, l.root.prev)
 	}
 }
 
-// EachReverse calls 'fn' on every element from this node backward in the list.
-func (n *Node[V]) EachReverse(fn func(val V)) {
-	node := n
-	for node != nil {
-		fn(node.Value)
-		node = node.Prev
-	}
-}
-
-// EachNode calls 'fn' on every node from this node onward in the list.
-func (n *Node[V]) EachNode(fn func(n *Node[V])) {
-	node := n
-	for node != nil {
-		fn(node)
-		node = node.Next
-	}
-}
-
-// EachReverseNode calls 'fn' on every node from this node backward in the list.
-func (n *Node[V]) EachReverseNode(fn func(n *Node[V])) {
-	node := n
-	for node != nil {
-		fn(node)
-		node = node.Prev
+// PushFrontList inserts a copy of another list at the front of list l.
+// The lists l and other may be the same. They must not be nil.
+func (l *List[V]) PushFrontList(other *List[V]) {
+	l.lazyInit()
+	for i, e := other.Len(), other.Back(); i > 0; i, e = i-1, e.Prev() {
+		l.insertValue(e.Value, &l.root)
 	}
 }
