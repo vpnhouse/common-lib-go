@@ -34,16 +34,16 @@ type accounter struct {
 	parent      io.ReadCloser
 }
 
-func (s *accounter) Read(p []byte) (n int, err error) {
-	if s.reporter != nil {
-		s.reporter(s.description, uint64(n))
+func (i *accounter) Read(p []byte) (n int, err error) {
+	if i.reporter != nil {
+		i.reporter(i.description, uint64(n))
 	}
 
-	return s.parent.Read(p)
+	return i.parent.Read(p)
 }
 
-func (s *accounter) Close() error {
-	return s.parent.Close()
+func (i *accounter) Close() error {
+	return i.parent.Close()
 }
 
 func (i *Instance) doPairedForward(wg *sync.WaitGroup, src, dst io.ReadWriteCloser, description any, rep Reporter) {
