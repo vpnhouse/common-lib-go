@@ -19,13 +19,15 @@ type Transport interface {
 
 type Reporter func(description any, n uint64)
 type Authorizer func(r *http.Request) (description any, err error)
+type Releaser func(description any)
 
 type Instance struct {
-	MarkHeaderName string
-	Transport      Transport
-	AuthCallback   Authorizer
-	StatsReportTx  Reporter
-	StatsReportRx  Reporter
+	MarkHeaderName  string
+	Transport       Transport
+	AuthCallback    Authorizer
+	ReleaseCallback Releaser
+	StatsReportTx   Reporter
+	StatsReportRx   Reporter
 }
 
 type accounter struct {
@@ -212,6 +214,7 @@ func (i *Instance) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Authentication failed", http.StatusForbidden)
 			return
 		}
+		defer i.ReleaseCallback(description)
 	}
 
 	if r.Method == "CONNECT" {
