@@ -18,7 +18,7 @@ type Transport interface {
 }
 
 type Reporter func(description any, n uint64)
-type Authorizer func(authType, authInfo string) (description any, err error)
+type Authorizer func(r *http.Request) (description any, err error)
 
 type Instance struct {
 	MarkHeaderName string
@@ -199,14 +199,14 @@ func (i *Instance) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if i.AuthCallback != nil {
-		authType, authInfo := xhttp.ExtractAuthorizationInfo(r, xhttp.HeaderProxyAuthorization)
+		_, authInfo := xhttp.ExtractAuthorizationInfo(r, xhttp.HeaderProxyAuthorization)
 		if authInfo == "" {
 			w.Header()["Proxy-Authenticate"] = []string{"Basic realm=\"proxy\""}
 			http.Error(w, "Proxy authentication required", http.StatusProxyAuthRequired)
 			return
 		}
 
-		description, err = i.AuthCallback(authType, authInfo)
+		description, err = i.AuthCallback(r)
 		if err != nil {
 			zap.L().Error("Authentication failed", zap.Error(err))
 			http.Error(w, "Authentication failed", http.StatusForbidden)
