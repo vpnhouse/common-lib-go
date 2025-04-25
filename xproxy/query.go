@@ -12,14 +12,15 @@ import (
 	"go.uber.org/zap"
 )
 
-type Transport interface {
-	Dial(addr string) (net.Conn, error)
-	HttpClient() *http.Client
-}
-
-type Reporter func(customInfo any, n uint64)
-type Authorizer func(r *http.Request) (customInfo any, err error)
-type Releaser func(customInfo any)
+type (
+	Reporter   func(customInfo any, n uint64)
+	Authorizer func(r *http.Request) (customInfo any, err error)
+	Releaser   func(customInfo any)
+	Transport  interface {
+		Dial(addr string) (net.Conn, error)
+		HttpClient() *http.Client
+	}
+)
 
 type Instance struct {
 	MarkHeaderName  string
@@ -28,24 +29,6 @@ type Instance struct {
 	ReleaseCallback Releaser
 	StatsReportTx   Reporter
 	StatsReportRx   Reporter
-}
-
-type accounter struct {
-	customInfo any
-	reporter   Reporter
-	parent     io.ReadCloser
-}
-
-func (i *accounter) Read(p []byte) (n int, err error) {
-	if i.reporter != nil {
-		i.reporter(i.customInfo, uint64(n))
-	}
-
-	return i.parent.Read(p)
-}
-
-func (i *accounter) Close() error {
-	return i.parent.Close()
 }
 
 func (i *Instance) doPairedForward(wg *sync.WaitGroup, src, dst io.ReadWriteCloser, customInfo any, rep Reporter) {
@@ -59,7 +42,6 @@ func (i *Instance) doPairedForward(wg *sync.WaitGroup, src, dst io.ReadWriteClos
 			return
 		}
 
-		// TODO: Handle length
 		n, err = dst.Write(buffer[:n])
 		if err != nil {
 			return
@@ -129,16 +111,20 @@ func (i *Instance) handleV2Connect(w http.ResponseWriter, r *http.Request, custo
 }
 
 func (i *Instance) handleProxy(w http.ResponseWriter, r *http.Request, customInfo any) {
+	// We can't actually receive remote url scheme from HTTP2 connection.
+	// If it's fixed in golang - feel free to remove it. Also check listener to enable HTTP2 back.
 	if r.ProtoMajor == 2 {
 		http.Error(w, "Bad request", http.StatusHTTPVersionNotSupported)
 	}
 
+	// Check if we do not process https as plain text
 	if r.URL.Scheme == "https" {
 		zap.L().Warn("Attempt to proxy https", zap.String("host", r.URL.Host))
 		http.Error(w, "Proxying HTTPS as plain text is dumb idea", http.StatusTeapot)
 		return
 	}
 
+	// Create new request
 	proxyReq, err := http.NewRequest(r.Method, r.URL.String(),
 		&accounter{
 			customInfo,
@@ -152,6 +138,7 @@ func (i *Instance) handleProxy(w http.ResponseWriter, r *http.Request, customInf
 		return
 	}
 
+	// Remove proxy-related headers
 	r.Header.Del("Proxy-Connection")
 	r.Header.Del("Proxy-Authenticate")
 	r.Header.Del("Proxy-Authorization")
