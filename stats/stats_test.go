@@ -54,7 +54,7 @@ func TestService(t *testing.T) {
 	assert.Equal(t, session.UserID, report.UserID)
 	assert.Equal(t, uint64(123)*10, report.DeltaRx)
 	assert.Equal(t, uint64(456)*10, report.DeltaTx)
-	assert.True(t, report.DeltaT > 0)
+	assert.True(t, report.DeltaTMilli > 0)
 }
 
 func TestServiceEmptyData(t *testing.T) {
@@ -89,5 +89,5 @@ func TestServiceEmptyData(t *testing.T) {
 	assert.Empty(t, report.UserID)
 	assert.Equal(t, uint64(123)*10, report.DeltaRx)
 	assert.Equal(t, uint64(456)*10, report.DeltaTx)
-	assert.True(t, report.DeltaT > 0)
+	assert.True(t, report.DeltaTMilli > 0)
 }
