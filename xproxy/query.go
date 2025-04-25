@@ -17,9 +17,9 @@ type Transport interface {
 	HttpClient() *http.Client
 }
 
-type Reporter func(description any, n uint64)
-type Authorizer func(r *http.Request) (description any, err error)
-type Releaser func(description any)
+type Reporter func(customInfo any, n uint64)
+type Authorizer func(r *http.Request) (customInfo any, err error)
+type Releaser func(customInfo any)
 
 type Instance struct {
 	MarkHeaderName  string
@@ -31,14 +31,14 @@ type Instance struct {
 }
 
 type accounter struct {
-	description any
-	reporter    Reporter
-	parent      io.ReadCloser
+	customInfo any
+	reporter   Reporter
+	parent     io.ReadCloser
 }
 
 func (i *accounter) Read(p []byte) (n int, err error) {
 	if i.reporter != nil {
-		i.reporter(i.description, uint64(n))
+		i.reporter(i.customInfo, uint64(n))
 	}
 
 	return i.parent.Read(p)
@@ -48,7 +48,7 @@ func (i *accounter) Close() error {
 	return i.parent.Close()
 }
 
-func (i *Instance) doPairedForward(wg *sync.WaitGroup, src, dst io.ReadWriteCloser, description any, rep Reporter) {
+func (i *Instance) doPairedForward(wg *sync.WaitGroup, src, dst io.ReadWriteCloser, customInfo any, rep Reporter) {
 	defer wg.Done()
 	defer dst.Close()
 
@@ -64,11 +64,11 @@ func (i *Instance) doPairedForward(wg *sync.WaitGroup, src, dst io.ReadWriteClos
 		if err != nil {
 			return
 		}
-		rep(description, uint64(n))
+		rep(customInfo, uint64(n))
 	}
 }
 
-func (i *Instance) handleV1Connect(w http.ResponseWriter, r *http.Request, description any) {
+func (i *Instance) handleV1Connect(w http.ResponseWriter, r *http.Request, customInfo any) {
 	remoteConn, err := i.Transport.Dial(remoteEndpoint(r))
 	if err != nil {
 		http.Error(w, "Not found", http.StatusNotFound)
@@ -102,12 +102,12 @@ func (i *Instance) handleV1Connect(w http.ResponseWriter, r *http.Request, descr
 
 	var wg sync.WaitGroup
 	wg.Add(2)
-	go i.doPairedForward(&wg, clientConn, remoteConn, description, i.StatsReportTx)
-	go i.doPairedForward(&wg, remoteConn, clientConn, description, i.StatsReportRx)
+	go i.doPairedForward(&wg, clientConn, remoteConn, customInfo, i.StatsReportTx)
+	go i.doPairedForward(&wg, remoteConn, clientConn, customInfo, i.StatsReportRx)
 	wg.Wait()
 }
 
-func (i *Instance) handleV2Connect(w http.ResponseWriter, r *http.Request, description any) {
+func (i *Instance) handleV2Connect(w http.ResponseWriter, r *http.Request, customInfo any) {
 	remoteConn, err := i.Transport.Dial(remoteEndpoint(r))
 	if err != nil {
 		http.Error(w, "Not found", http.StatusNotFound)
@@ -123,12 +123,12 @@ func (i *Instance) handleV2Connect(w http.ResponseWriter, r *http.Request, descr
 
 	var wg sync.WaitGroup
 	wg.Add(2)
-	go i.doPairedForward(&wg, clientConn, remoteConn, description, i.StatsReportTx)
-	go i.doPairedForward(&wg, remoteConn, clientConn, description, i.StatsReportRx)
+	go i.doPairedForward(&wg, clientConn, remoteConn, customInfo, i.StatsReportTx)
+	go i.doPairedForward(&wg, remoteConn, clientConn, customInfo, i.StatsReportRx)
 	wg.Wait()
 }
 
-func (i *Instance) handleProxy(w http.ResponseWriter, r *http.Request, description any) {
+func (i *Instance) handleProxy(w http.ResponseWriter, r *http.Request, customInfo any) {
 	if r.ProtoMajor == 2 {
 		http.Error(w, "Bad request", http.StatusHTTPVersionNotSupported)
 	}
@@ -141,7 +141,7 @@ func (i *Instance) handleProxy(w http.ResponseWriter, r *http.Request, descripti
 
 	proxyReq, err := http.NewRequest(r.Method, r.URL.String(),
 		&accounter{
-			description,
+			customInfo,
 			i.StatsReportTx,
 			r.Body,
 		},
@@ -187,7 +187,7 @@ func (i *Instance) handleProxy(w http.ResponseWriter, r *http.Request, descripti
 	// Copy the body of the proxy response to the original response
 	io.Copy(w,
 		&accounter{
-			description,
+			customInfo,
 			i.StatsReportTx,
 			resp.Body,
 		},
@@ -196,8 +196,8 @@ func (i *Instance) handleProxy(w http.ResponseWriter, r *http.Request, descripti
 
 func (i *Instance) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var (
-		description any
-		err         error
+		customInfo any
+		err        error
 	)
 
 	if i.AuthCallback != nil {
@@ -208,29 +208,29 @@ func (i *Instance) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		description, err = i.AuthCallback(r)
+		customInfo, err = i.AuthCallback(r)
 		if err != nil {
 			zap.L().Error("Authentication failed", zap.Error(err))
 			http.Error(w, "Authentication failed", http.StatusForbidden)
 			return
 		}
-		defer i.ReleaseCallback(description)
+		defer i.ReleaseCallback(customInfo)
 	}
 
 	if r.Method == "CONNECT" {
 		if r.ProtoMajor == 1 {
-			i.handleV1Connect(w, r, description)
+			i.handleV1Connect(w, r, customInfo)
 			return
 		}
 
 		if r.ProtoMajor == 2 {
-			i.handleV2Connect(w, r, description)
+			i.handleV2Connect(w, r, customInfo)
 			return
 		}
 
 		http.Error(w, "Unsupported protocol version", http.StatusHTTPVersionNotSupported)
 		return
 	} else {
-		i.handleProxy(w, r, description)
+		i.handleProxy(w, r, customInfo)
 	}
 }
