@@ -6,12 +6,12 @@ import (
 
 type KeyCounter[K comparable] struct {
 	lock sync.Mutex
-	ids  map[K]int
+	keys map[K]int
 }
 
 func New[K comparable]() *KeyCounter[K] {
 	return &KeyCounter[K]{
-		ids: map[K]int{},
+		keys: map[K]int{},
 	}
 }
 
@@ -19,16 +19,16 @@ func (s *KeyCounter[K]) Inc(k K) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	s.ids[k]++
+	s.keys[k]++
 }
 
 func (s *KeyCounter[K]) Dec(k K) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	s.ids[k]--
-	if s.ids[k] == 0 {
-		delete(s.ids, k)
+	s.keys[k]--
+	if s.keys[k] == 0 {
+		delete(s.keys, k)
 	}
 }
 
@@ -36,5 +36,5 @@ func (s *KeyCounter[K]) Count() int {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	return len(s.ids)
+	return len(s.keys)
 }
