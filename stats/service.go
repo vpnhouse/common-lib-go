@@ -29,10 +29,10 @@ type Session struct {
 
 type Report struct {
 	Session
-	Created uint64
-	DeltaRx uint64
-	DeltaTx uint64
-	DeltaT  uint64
+	CreatedNano uint64
+	DeltaRx     uint64
+	DeltaTx     uint64
+	DeltaTNano  uint64
 }
 
 type (
@@ -40,11 +40,11 @@ type (
 	OnData  func(sessionID uuid.UUID, out *SessionData)
 )
 
-var Now func() uint64 = func() uint64 {
-	return uint64(time.Now().Unix())
+var NowNano func() uint64 = func() uint64 {
+	return uint64(time.Now().UnixNano())
 }
 
-func parse(k []byte, v []byte, nowT uint64) *Report {
+func parse(k []byte, v []byte, nowNano uint64) *Report {
 	sessionID, _ := uuid.FromBytes(k)
 	r := &Report{
 		Session: Session{
@@ -58,9 +58,9 @@ func parse(k []byte, v []byte, nowT uint64) *Report {
 	i += 16
 
 	// Start collecting timestamp in seconds
-	r.Created = ParseUint64(v[i : i+8])
+	r.CreatedNano = ParseUint64(v[i : i+8])
 	i += 8
-	r.DeltaT = nowT - r.Created
+	r.DeltaTNano = nowNano - r.CreatedNano
 
 	// Data
 	dataLen := int(ParseUint16(v[i : i+2]))
@@ -87,8 +87,8 @@ func toValue(session *Session, drx, dtx uint64) []byte {
 	i += 16
 
 	// Start timestamp
-	now := Now()
-	SetUint64(now, d[i:i+8])
+	nowNano := NowNano()
+	SetUint64(nowNano, d[i:i+8])
 	i += 8
 
 	// Data
@@ -133,9 +133,9 @@ func (s *Service) run(flushInterval time.Duration) {
 }
 
 func (s *Service) onEvict(evicted *xcache.Items) {
-	now := Now()
+	nowNano := NowNano()
 	for i := range evicted.Values {
-		r := parse(evicted.Keys[i], evicted.Values[i], now)
+		r := parse(evicted.Keys[i], evicted.Values[i], nowNano)
 		s.onFlush(r)
 	}
 }
