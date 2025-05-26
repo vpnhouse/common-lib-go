@@ -1,6 +1,7 @@
 package xproxy
 
 import (
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -180,29 +181,33 @@ func (i *Instance) handleProxy(w http.ResponseWriter, r *http.Request, customInf
 		},
 	)
 }
+func (i *Instance) handleAuth(r *http.Request) (customInfo any, err error) {
+	if i.AuthCallback == nil {
+		return nil, errors.New("auth callback is not set")
+	}
+
+	_, authInfo := xhttp.ExtractAuthorizationInfo(r, xhttp.HeaderProxyAuthorization)
+	if authInfo == "" {
+		return nil, errors.New("can't extract authorization info")
+	}
+
+	customInfo, err = i.AuthCallback(r)
+	if err != nil {
+		return nil, err
+	}
+
+	return customInfo, nil
+}
 
 func (i *Instance) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var (
-		customInfo any
-		err        error
-	)
-
-	if i.AuthCallback != nil {
-		_, authInfo := xhttp.ExtractAuthorizationInfo(r, xhttp.HeaderProxyAuthorization)
-		if authInfo == "" {
-			w.Header()["Proxy-Authenticate"] = []string{"Basic realm=\"proxy\""}
-			http.Error(w, "Proxy authentication required", http.StatusProxyAuthRequired)
-			return
-		}
-
-		customInfo, err = i.AuthCallback(r)
-		if err != nil {
-			zap.L().Error("Authentication failed", zap.Error(err))
-			http.Error(w, "Authentication failed", http.StatusForbidden)
-			return
-		}
-		defer i.ReleaseCallback(customInfo)
+	customInfo, err := i.handleAuth(r)
+	if err != nil {
+		w.Header()["Proxy-Authenticate"] = []string{"Basic realm=\"proxy\""}
+		http.Error(w, "Proxy authentication required", http.StatusProxyAuthRequired)
+		return
 	}
+
+	defer i.ReleaseCallback(customInfo)
 
 	if r.Method == "CONNECT" {
 		if r.ProtoMajor == 1 {
