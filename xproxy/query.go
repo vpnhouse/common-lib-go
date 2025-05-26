@@ -13,6 +13,11 @@ import (
 	"go.uber.org/zap"
 )
 
+var (
+	ErrAuthCallbackNotSet  = errors.New("auth callback is not set")
+	ErrCantExtractAuthInfo = errors.New("can't extract authorization info")
+)
+
 type (
 	Reporter   func(customInfo any, n uint64)
 	Authorizer func(r *http.Request) (customInfo any, err error)
@@ -183,12 +188,12 @@ func (i *Instance) handleProxy(w http.ResponseWriter, r *http.Request, customInf
 }
 func (i *Instance) handleAuth(r *http.Request) (customInfo any, err error) {
 	if i.AuthCallback == nil {
-		return nil, errors.New("auth callback is not set")
+		return nil, ErrAuthCallbackNotSet
 	}
 
 	_, authInfo := xhttp.ExtractAuthorizationInfo(r, xhttp.HeaderProxyAuthorization)
 	if authInfo == "" {
-		return nil, errors.New("can't extract authorization info")
+		return nil, ErrCantExtractAuthInfo
 	}
 
 	customInfo, err = i.AuthCallback(r)
@@ -202,6 +207,7 @@ func (i *Instance) handleAuth(r *http.Request) (customInfo any, err error) {
 func (i *Instance) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	customInfo, err := i.handleAuth(r)
 	if err != nil {
+		zap.L().Info("Proxy authentication failed", zap.Error(err))
 		w.Header()["Proxy-Authenticate"] = []string{"Basic realm=\"proxy\""}
 		http.Error(w, "Proxy authentication required", http.StatusProxyAuthRequired)
 		return
