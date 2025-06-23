@@ -15,6 +15,9 @@ var DefaultPlatformParsers = []PlatformParser{
 }
 
 func TryParsePlatform(r *http.Request, platformParsers ...PlatformParser) string {
+	if r == nil {
+		return ""
+	}
 	if len(platformParsers) == 0 {
 		platformParsers = DefaultPlatformParsers
 	}
@@ -38,5 +41,5 @@ func GetByUserAgent(r *http.Request) string {
 }
 
 func GetByXClientTypeHeader(r *http.Request) string {
-	return r.Header.Get("X-Client-Type")
+	return strings.ToLower(r.Header.Get("X-Client-Type"))
 }
