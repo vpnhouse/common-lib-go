@@ -96,8 +96,6 @@ func (s *Instance) run(path string, modTime time.Time) {
 				continue
 			}
 			if reader == nil {
-				zap.L().Warn("no any previously loaded maxmind db",
-					zap.String("path", path))
 				continue
 			}
 			db := s.dbCountry.Swap(newDb(reader))
@@ -121,12 +119,12 @@ func load(path string, prevModTime time.Time) (*maxminddb.Reader, time.Time, err
 
 	modTime := fi.ModTime()
 	if modTime.Equal(prevModTime) {
-		zap.L().Info("maxmind db remains unchanged", zap.Time("modification_time", prevModTime))
+		zap.L().Debug("maxmind db remains unchanged", zap.Time("modification_time", prevModTime))
 		return nil, prevModTime, nil
 	}
 
 	if !prevModTime.IsZero() {
-		zap.L().Info("maxmind db modified, let's reload it",
+		zap.L().Debug("maxmind db modified, reloading...",
 			zap.Time("last_modification_time", prevModTime),
 			zap.Time("modification_time", modTime),
 			zap.Duration("modified_ago", modTime.Sub(prevModTime)),
@@ -135,7 +133,7 @@ func load(path string, prevModTime time.Time) (*maxminddb.Reader, time.Time, err
 
 	db, err := maxminddb.Open(path)
 	if err != nil || db == nil {
-		return nil, modTime, xerror.EInternalError("can't open maxminddb country database", err, zap.String("path", path))
+		return nil, modTime, xerror.EInternalError("can't open maxmind db", err, zap.String("path", path))
 	}
 
 	zap.L().Info("maxmind db is successfully loaded",
