@@ -2,6 +2,7 @@ package geoip
 
 import (
 	"net"
+	"net/http"
 	"os"
 	"sync/atomic"
 	"time"
@@ -53,6 +54,25 @@ func (s *Instance) GetCountry(ip net.IP) (string, error) {
 	}
 
 	return record.Country.ISOCode, nil
+}
+
+func (s *Instance) TryGetCountryFromRequest(r *http.Request) string {
+	if s == nil {
+		return ""
+	}
+	clientIP := GetRemoteIP(r)
+	ip := net.ParseIP(clientIP)
+	if ip == nil {
+		zap.L().Error("failed to get client ip by request")
+		return ""
+	}
+
+	country, err := s.GetCountry(ip)
+	if err != nil {
+		zap.L().Error("failed to get client country by ip", zap.Error(err))
+		return ""
+	}
+	return country
 }
 
 func (s *Instance) Shutdown() error {
