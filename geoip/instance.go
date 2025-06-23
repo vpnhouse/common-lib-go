@@ -11,7 +11,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const reloadTimeout = time.Hour
+const reloadTimeout = time.Minute
 
 type Instance struct {
 	dbCountry atomic.Pointer[db]
@@ -66,7 +66,7 @@ func (s *Instance) Shutdown() error {
 
 	err := db.Close()
 	if err != nil {
-		return xerror.EInternalError("can't close maxminddb country database", err)
+		return xerror.EInternalError("can't close maxmind db", err)
 	}
 	return nil
 }
@@ -91,10 +91,13 @@ func (s *Instance) run(path string, modTime time.Time) {
 			reader, modTime, err = load(path, modTime)
 
 			if err != nil {
-				zap.L().Error("failed to load maxmind db", zap.Error(err))
+				zap.L().Error("failed to load maxmind db",
+					zap.String("path", path), zap.Error(err))
 				continue
 			}
 			if reader == nil {
+				zap.L().Warn("no any previously loaded maxmind db",
+					zap.String("path", path))
 				continue
 			}
 			db := s.dbCountry.Swap(newDb(reader))
@@ -103,7 +106,8 @@ func (s *Instance) run(path string, modTime time.Time) {
 			}
 			err = db.Close()
 			if err != nil {
-				zap.L().Error("failed to close old maxmind db", zap.Error(err))
+				zap.L().Error("failed to close old maxmind db",
+					zap.String("path", path), zap.Error(err))
 			}
 		}
 	}
@@ -112,17 +116,17 @@ func (s *Instance) run(path string, modTime time.Time) {
 func load(path string, prevModTime time.Time) (*maxminddb.Reader, time.Time, error) {
 	fi, err := os.Stat(path)
 	if err != nil {
-		return nil, prevModTime, xerror.EInternalError("can't stat maxminddb country database", err, zap.String("path", path))
+		return nil, prevModTime, xerror.EInternalError("can't stat maxmind db", err, zap.String("path", path))
 	}
 
 	modTime := fi.ModTime()
 	if modTime.Equal(prevModTime) {
-		zap.L().Info("maxmind database remains unchanged", zap.Time("modification_time", prevModTime))
+		zap.L().Info("maxmind db remains unchanged", zap.Time("modification_time", prevModTime))
 		return nil, prevModTime, nil
 	}
 
 	if !prevModTime.IsZero() {
-		zap.L().Info("maxmind database modified, lets reload it",
+		zap.L().Info("maxmind db modified, let's reload it",
 			zap.Time("last_modification_time", prevModTime),
 			zap.Time("modification_time", modTime),
 			zap.Duration("modified_ago", modTime.Sub(prevModTime)),
@@ -132,9 +136,9 @@ func load(path string, prevModTime time.Time) (*maxminddb.Reader, time.Time, err
 	db, err := maxminddb.Open(path)
 	if err != nil || db == nil {
 		return nil, modTime, xerror.EInternalError("can't open maxminddb country database", err, zap.String("path", path))
-	}	
+	}
 
-	zap.L().Info("maxmind database is successfully loaded",
+	zap.L().Info("maxmind db is successfully loaded",
 		zap.String("path", path), zap.Time("modification_time", modTime))
 
 	return db, modTime, nil
