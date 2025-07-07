@@ -28,12 +28,12 @@ func (r *SystemResolver) Lookup(ctx context.Context, request *Request) (*Respons
 	if err != nil {
 		switch dnsErr := err.(type) {
 		case *net.DNSError:
-			if dnsErr.IsNotFound {
-				return nil, ErrDNSNotExists
-			}
-
 			if dnsErr.IsTimeout {
 				return nil, ErrDNSNoResponse
+			}
+
+			if dnsErr.IsNotFound {
+				return nil, ErrDNSNotExists
 			}
 		}
 
