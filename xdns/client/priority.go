@@ -95,18 +95,15 @@ func (r *PriorityResolver) Lookup(ctx context.Context, request *Request) (*Respo
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 
-	for {
-		for _, entity := range r.resolvers {
-			if time.Since(entity.failedAt) > entity.failureTimeout {
-				result, err := entity.resolver.Lookup(ctx, request)
-				if err == nil {
-					return result, nil
-				}
+	for _, entity := range r.resolvers {
+		if time.Since(entity.failedAt) > entity.failureTimeout {
+			result, err := entity.resolver.Lookup(ctx, request)
+			if err == nil {
+				return result, nil
+			}
 
-				if err != ErrDNSEmptyResponse {
-					entity.failedAt = time.Now()
-					continue
-				}
+			if err != ErrDNSEmptyResponse && err != ErrDNSNotExists {
+				entity.failedAt = time.Now()
 			}
 		}
 	}
