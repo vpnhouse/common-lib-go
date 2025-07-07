@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 )
@@ -102,7 +103,7 @@ func (r *PriorityResolver) Lookup(ctx context.Context, request *Request) (*Respo
 				return result, nil
 			}
 
-			if err != ErrDNSEmptyResponse && err != ErrDNSNotExists {
+			if !errors.Is(err, ErrDNSEmptyResponse) && !errors.Is(err, ErrDNSNotExists) {
 				entity.failedAt = time.Now()
 			}
 		}

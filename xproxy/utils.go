@@ -25,7 +25,7 @@ func isConnectionClosed(err error) bool {
 		return false
 	}
 
-	if err == io.EOF {
+	if errors.Is(err, io.EOF) {
 		return true
 	}
 
