@@ -85,6 +85,11 @@ func (r *DirectResolver) once(ctx context.Context, request *Request, protected b
 
 	serverAddr := net.UDPAddrFromAddrPort(netip.AddrPortFrom(r.server, 53))
 	msgResponse, _, err := client.ExchangeContext(ctx, &msgQuery, serverAddr.String())
+
+	if msgResponse != nil && msgResponse.Opcode == dns.RcodeNameError {
+		return nil, ErrNotExists
+	}
+
 	if err != nil {
 		return nil, err
 	}
