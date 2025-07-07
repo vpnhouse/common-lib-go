@@ -91,5 +91,5 @@ func (r *LastActiveResolver) Lookup(ctx context.Context, request *Request) (*Res
 	}
 
 	r.lock.RUnlock()
-	return nil, ErrNoResponse
+	return nil, ErrDNSNoResponse
 }

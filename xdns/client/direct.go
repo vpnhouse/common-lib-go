@@ -117,7 +117,7 @@ func (r *DirectResolver) once(ctx context.Context, request *Request, protected b
 
 	if len(addresses) == 0 {
 		zap.L().Debug("Empty response", zap.String("server", r.server.String()), zap.String("domain", request.Domain), zap.Uint16("type", request.QueryType))
-		return nil, ErrEmptyResponse
+		return nil, ErrDNSEmptyResponse
 	}
 
 	return &Response{
