@@ -26,7 +26,22 @@ func (r *SystemResolver) Lookup(ctx context.Context, request *Request) (*Respons
 
 	addrs, err := resolver.LookupIPAddr(ctx, request.Domain)
 	if err != nil {
+		switch dnsErr := err.(type) {
+		case *net.DNSError:
+			if dnsErr.IsTimeout {
+				return nil, ErrDNSNoResponse
+			}
+
+			if dnsErr.IsNotFound {
+				return nil, ErrDNSNotExists
+			}
+		}
+
 		return nil, err
+	}
+
+	if len(addrs) == 0 {
+		return nil, ErrDNSEmptyResponse
 	}
 
 	response := &Response{
@@ -41,15 +56,7 @@ func (r *SystemResolver) Lookup(ctx context.Context, request *Request) (*Respons
 		}
 	}
 
-	if response.Exists && len(response.Addresses) == 0 {
-		return nil, ErrInvalidResponse
-	}
-
 	return response, nil
-}
-func (r *SystemResolver) LookupCached(request *Request) (*Response, error) {
-	return nil, ErrCacheMiss
-
 }
 func (r *SystemResolver) LookupNonCached(ctx context.Context, request *Request) (*Response, error) {
 	return r.Lookup(ctx, request)

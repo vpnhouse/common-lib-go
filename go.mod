@@ -1,8 +1,6 @@
 module github.com/vpnhouse/common-lib-go
 
-go 1.22.2
-
-toolchain go1.22.6
+go 1.23.10
 
 require (
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d

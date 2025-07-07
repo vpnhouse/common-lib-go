@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 )
@@ -96,22 +97,17 @@ func (r *PriorityResolver) Lookup(ctx context.Context, request *Request) (*Respo
 	defer r.lock.RUnlock()
 
 	for _, entity := range r.resolvers {
-		if !entity.failedAt.IsZero() {
-			if time.Since(entity.failedAt) > entity.failureTimeout {
-				entity.failedAt = time.Time{}
-			} else {
-				continue
+		if time.Since(entity.failedAt) > entity.failureTimeout {
+			result, err := entity.resolver.Lookup(ctx, request)
+			if err == nil {
+				return result, nil
+			}
+
+			if !errors.Is(err, ErrDNSEmptyResponse) && !errors.Is(err, ErrDNSNotExists) {
+				entity.failedAt = time.Now()
 			}
 		}
-
-		result, err := entity.resolver.Lookup(ctx, request)
-		if err != nil {
-			entity.failedAt = time.Now()
-			continue
-		}
-
-		return result, nil
 	}
 
-	return nil, ErrNoResponse
+	return nil, ErrDNSNoResponse
 }

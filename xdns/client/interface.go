@@ -18,14 +18,14 @@ const (
 var DefaultDNSServers = []netip.Addr{netip.MustParseAddr("1.1.1.1"), netip.MustParseAddr("8.8.8.8")}
 
 var (
-	ErrNoResponse             = errors.New("no vaild response")
 	ErrExists                 = errors.New("already exists")
 	ErrNotExists              = errors.New("resource does not exist")
-	ErrEmptyResponse          = errors.New("empty response")
-	ErrInvalidResponse        = errors.New("invalid response")
 	ErrProtectionNotSupported = errors.New("protection is not supported")
-	ErrCacheMiss              = errors.New("not found in cachce")
 	ErrNoCache                = errors.New("no cache")
+
+	ErrDNSNotExists     = errors.New("DNS entry not exists")
+	ErrDNSNoResponse    = errors.New("no vaild DNS response")
+	ErrDNSEmptyResponse = errors.New("empty DNS response")
 )
 
 type Request struct {
