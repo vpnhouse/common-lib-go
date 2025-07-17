@@ -7,12 +7,13 @@ import (
 
 // DomainConfig is the YAML version of the `adminAPI.DomainConfig` struct.
 type DomainConfig struct {
-	Mode        string   `yaml:"mode" valid:"required"`
-	PrimaryName string   `yaml:"name" valid:"dns,required"`
-	ExtraNames  []string `yaml:"extra_names,omitempty" valid:"dns"`
-	IssueSSL    bool     `yaml:"issue_ssl,omitempty"`
-	Schema      string   `yaml:"schema,omitempty"`
-	Email       string   `yaml:"email,omitempty" valid:"email"`
+	Mode         string   `yaml:"mode" valid:"required"`
+	PrimaryName  string   `yaml:"name" valid:"dns,required"`
+	ExtraNames   []string `yaml:"extra_names,omitempty" valid:"dns"`
+	ForeignNames []string `yaml:"foreign_names,omitempty" valid:"dns"`
+	IssueSSL     bool     `yaml:"issue_ssl,omitempty"`
+	Schema       string   `yaml:"schema,omitempty"`
+	Email        string   `yaml:"email,omitempty" valid:"email"`
 
 	// Dir to store cached certificates, use sub-directory of cfgDir if possible.
 	Dir string `yaml:"dir,omitempty" valid:"path"`

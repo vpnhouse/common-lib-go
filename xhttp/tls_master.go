@@ -12,16 +12,25 @@ type CertMasterOpts struct {
 	CacheDir     string
 	NonSSLRouter chi.Router
 	Domains      []string
+	ForeignPath  string
 }
 
 type CertMaster struct {
 	stopped bool
 	issuers []*Issuer
+	foreign *CertWatcher
 }
 
 func NewCertMaster(opts *CertMasterOpts) (*CertMaster, error) {
 	m := &CertMaster{
 		issuers: []*Issuer{},
+	}
+	var err error
+	if opts.ForeignPath != "" {
+		m.foreign, err = NewCertWatcher(opts.ForeignPath)
+		if err != nil {
+			return nil, err
+		}
 	}
 	for _, d := range opts.Domains {
 		issuer, err := NewIssuer(&IssuerOpts{
@@ -45,6 +54,10 @@ func (m *CertMaster) GetCertificate(h *tls.ClientHelloInfo) (*tls.Certificate, e
 		if cert := i.GetCertificate(h.ServerName); cert != nil {
 			return cert, nil
 		}
+	}
+
+	if m.foreign != nil {
+		return m.foreign.GetCertificate(h.ServerName)
 	}
 
 	return nil, fmt.Errorf("unknown domain name")
