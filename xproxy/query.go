@@ -2,6 +2,7 @@ package xproxy
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -29,6 +30,7 @@ type (
 )
 
 type Instance struct {
+	Name            string
 	MarkHeaderName  string
 	Transport       Transport
 	AuthCallback    Authorizer
@@ -124,7 +126,7 @@ func (i *Instance) handleProxy(w http.ResponseWriter, r *http.Request, customInf
 	}
 
 	// Check if we do not process https as plain text
-	if r.URL.Scheme == "https" {
+	if r.URL.Scheme == "https" && r.Method != http.MethodOptions {
 		zap.L().Warn("Attempt to proxy https", zap.String("host", r.URL.Host))
 		http.Error(w, "Proxying HTTPS as plain text is dumb idea", http.StatusTeapot)
 		return
@@ -207,15 +209,25 @@ func (i *Instance) handleAuth(r *http.Request) (customInfo any, err error) {
 func (i *Instance) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	customInfo, err := i.handleAuth(r)
 	if err != nil {
-		zap.L().Info("Proxy authentication failed", zap.Error(err))
-		w.Header()["Proxy-Authenticate"] = []string{"Basic realm=\"proxy\""}
-		http.Error(w, "Proxy authentication required", http.StatusProxyAuthRequired)
-		return
+		// Preflight requests never send authorization headers
+		// To prevent annying users with login form simply bypass request to the target host
+		// to get valid response
+		if r.Method != http.MethodOptions {
+			zap.L().Info("Proxy authentication failed", zap.Error(err))
+			name := "proxy"
+			if i.Name != "" {
+				name = i.Name
+			}
+			w.Header()["Proxy-Authenticate"] = []string{fmt.Sprintf("Basic realm=\"%s\"", name)}
+			http.Error(w, "Proxy authentication required", http.StatusProxyAuthRequired)
+			return
+		}
+		zap.L().Info("Bypass proxy OPTIONS request to target server")
 	}
 
 	defer i.ReleaseCallback(customInfo)
 
-	if r.Method == "CONNECT" {
+	if r.Method == http.MethodConnect {
 		if r.ProtoMajor == 1 {
 			i.handleV1Connect(w, r, customInfo)
 			return
