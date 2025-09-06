@@ -2,6 +2,7 @@ package xproxy
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -29,6 +30,7 @@ type (
 )
 
 type Instance struct {
+	Name            string
 	MarkHeaderName  string
 	Transport       Transport
 	AuthCallback    Authorizer
@@ -212,7 +214,11 @@ func (i *Instance) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// to get valid response
 		if r.Method != http.MethodOptions {
 			zap.L().Info("Proxy authentication failed", zap.Error(err))
-			w.Header()["Proxy-Authenticate"] = []string{"Basic realm=\"proxy\""}
+			name := "proxy"
+			if i.Name != "" {
+				name = i.Name
+			}
+			w.Header()["Proxy-Authenticate"] = []string{fmt.Sprintf("Basic realm=\"%s\"", name)}
 			http.Error(w, "Proxy authentication required", http.StatusProxyAuthRequired)
 			return
 		}
