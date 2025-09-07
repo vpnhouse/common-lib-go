@@ -210,10 +210,14 @@ func (i *Instance) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	customInfo, err := i.handleAuth(r)
 	if err != nil {
 		// Preflight requests never send authorization headers
-		// To prevent annying users with login form simply bypass request to the target host
+		// To prevent annoying users with login form simply bypass request to the target host
 		// to get valid response
 		if r.Method != http.MethodOptions {
-			zap.L().Info("Proxy authentication failed", zap.Error(err))
+			zap.L().Info("Proxy authentication failed", 
+				zap.String("method", r.Method),
+				zap.Stringer("url", r.URL), 
+				zap.Error(err),
+			)
 			name := "proxy"
 			if i.Name != "" {
 				name = i.Name
