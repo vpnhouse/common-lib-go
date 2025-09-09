@@ -221,6 +221,11 @@ func (i *Instance) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				name = i.Name
 			}
 			w.Header()["Proxy-Authenticate"] = []string{fmt.Sprintf("Basic realm=\"%s\"", name)}
+			if errors.Is(err, ErrCantExtractAuthInfo) {
+				// For 99% cases it's prefight request
+				// https://stackoverflow.com/a/73561747
+				w.Header()["Access-Control-Allow-Private-Network"] = []string{"true"}
+			}
 			http.Error(w, "Proxy authentication required", http.StatusProxyAuthRequired)
 			return
 		}
@@ -230,7 +235,7 @@ func (i *Instance) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer i.ReleaseCallback(customInfo)
 
 	if r.Method == http.MethodConnect {
-		
+
 		if r.ProtoMajor == 1 {
 			i.handleV1Connect(w, r, customInfo)
 			return
