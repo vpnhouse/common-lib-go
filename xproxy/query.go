@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httputil"
 	"sync"
 
 	"github.com/posener/h2conn"
@@ -213,13 +214,8 @@ func (i *Instance) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// To prevent annoying users with login form simply bypass request to the target host
 		// to get valid response
 		if r.Method != http.MethodOptions {
-			zap.L().Info("Proxy authentication failed",
-				zap.String("method", r.Method),
-				zap.Stringer("url", r.URL),
-				zap.Any("headers", r.Header),
-				zap.Int("protocol", r.ProtoMajor),
-				zap.Error(err),
-			)
+			dump, err := httputil.DumpRequest(r, true)
+			zap.L().Info("Proxy authentication failed", zap.String("request", string(dump)), zap.Error(err))
 			name := "proxy"
 			if i.Name != "" {
 				name = i.Name
