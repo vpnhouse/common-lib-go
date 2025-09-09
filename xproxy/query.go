@@ -214,8 +214,8 @@ func (i *Instance) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// To prevent annoying users with login form simply bypass request to the target host
 		// to get valid response
 		if r.Method != http.MethodOptions {
-			dump, err := httputil.DumpRequest(r, true)
-			zap.L().Info("Proxy authentication failed", zap.String("request", string(dump)), zap.Error(err))
+			dump, _ := httputil.DumpRequest(r, true)
+			zap.L().Info("Proxy authentication failed", zap.Error(err), zap.String("request", string(dump)))
 			name := "proxy"
 			if i.Name != "" {
 				name = i.Name
@@ -230,6 +230,7 @@ func (i *Instance) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer i.ReleaseCallback(customInfo)
 
 	if r.Method == http.MethodConnect {
+		
 		if r.ProtoMajor == 1 {
 			i.handleV1Connect(w, r, customInfo)
 			return
