@@ -87,13 +87,19 @@ func (r *CachedResolver) Preset(domain string, queryType uint16, response *Respo
 
 func (r *CachedResolver) cacheResult(key cacheKey, lookupResult *Response) {
 	cachedResult := *lookupResult
-	if cachedResult.TTL < r.minTtl {
-		cachedResult.TTL = r.minTtl
-	}
-	if cachedResult.TTL > r.maxTtl {
-		cachedResult.TTL = r.maxTtl
+	var deadline *time.Time
+	if cachedResult.TTL != nil {
+		if *cachedResult.TTL < r.minTtl {
+			*cachedResult.TTL = r.minTtl
+		}
+		if *cachedResult.TTL > r.maxTtl {
+			*cachedResult.TTL = r.maxTtl
+		}
+
+		deadlineValue := time.Now().Add(r.keepTime)
+		deadline = &deadlineValue
 	}
 
-	r.cache.Set(key, cachedResult, r.keepTime)
+	r.cache.Set(key, cachedResult, deadline)
 	zap.L().Debug("Cached", zap.String("key", fmt.Sprintf("%s:%d", key.domain, key.queryType)), zap.Any("value", cachedResult.Addresses))
 }
