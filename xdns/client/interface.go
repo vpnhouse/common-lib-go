@@ -28,40 +28,6 @@ var (
 	ErrDNSEmptyResponse = errors.New("empty DNS response")
 )
 
-type Request struct {
-	Domain    string
-	QueryType uint16
-	NoLazy    bool
-}
-
-type Response struct {
-	Exists             bool
-	Addresses          []netip.Addr
-	CreatedAt          time.Time
-	TTL                *time.Duration
-	ProtectionRequired bool
-}
-
 type Resolver interface {
 	Lookup(ctx context.Context, request *Request) (*Response, error)
-}
-
-func (r *Response) Successful() bool {
-	return r != nil && r.Exists && len(r.Addresses) > 0
-}
-
-func (r *Response) Expired() bool {
-	if r.TTL == nil {
-		return false
-	}
-	return time.Since(r.CreatedAt) > *r.TTL
-}
-
-func (r *Response) AddressesAsStrings() []string {
-	result := make([]string, len(r.Addresses))
-	for idx, addr := range r.Addresses {
-		result[idx] = addr.String()
-	}
-
-	return result
 }

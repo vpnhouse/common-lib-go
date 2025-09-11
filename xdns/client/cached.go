@@ -85,21 +85,24 @@ func (r *CachedResolver) Preset(domain string, queryType uint16, response *Respo
 	}
 }
 
-func (r *CachedResolver) cacheResult(key cacheKey, lookupResult *Response) {
-	cachedResult := *lookupResult
-	var deadline *time.Time
-	if cachedResult.TTL != nil {
-		if *cachedResult.TTL < r.minTtl {
-			*cachedResult.TTL = r.minTtl
+func (r *CachedResolver) cacheResult(key cacheKey, result *Response) {
+	result = result.Clone()
+	var keepDeadline *time.Time
+
+	now := time.Now()
+	if result.Expires != nil {
+		ttl := result.Expires.Sub(now)
+		if ttl < r.minTtl {
+			*result.Expires = now.Add(r.minTtl)
 		}
-		if *cachedResult.TTL > r.maxTtl {
-			*cachedResult.TTL = r.maxTtl
+		if ttl > r.minTtl {
+			*result.Expires = now.Add(r.maxTtl)
 		}
 
-		deadlineValue := time.Now().Add(r.keepTime)
-		deadline = &deadlineValue
+		deadlineValue := now.Add(r.keepTime)
+		keepDeadline = &deadlineValue
 	}
 
-	r.cache.Set(key, cachedResult, deadline)
-	zap.L().Debug("Cached", zap.String("key", fmt.Sprintf("%s:%d", key.domain, key.queryType)), zap.Any("value", cachedResult.Addresses))
+	r.cache.Set(key, *result, keepDeadline)
+	zap.L().Debug("Cached", zap.String("key", fmt.Sprintf("%s:%d", key.domain, key.queryType)), zap.Any("value", result.Addresses))
 }
