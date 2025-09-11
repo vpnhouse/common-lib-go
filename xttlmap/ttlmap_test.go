@@ -6,11 +6,16 @@ import (
 	"time"
 )
 
+func deadline(ttl time.Duration) *time.Time {
+	t := time.Now().Add(ttl)
+	return &t
+}
+
 func TestSetGet(t *testing.T) {
 	store := New[string, string](3)
 
-	store.Set("key1", "value1", time.Minute)
-	store.Set("key2", "value2", time.Minute)
+	store.Set("key1", "value1", deadline(time.Minute))
+	store.Set("key2", "value2", deadline(time.Minute))
 
 	if val, ok := store.Get("key1"); !ok || val != "value1" {
 		t.Errorf("Expected value1, got %v", val)
@@ -32,8 +37,8 @@ func TestSetGet(t *testing.T) {
 func TestMaxSize(t *testing.T) {
 	store := New[string, string](2)
 
-	store.Set("key1", "value1", time.Minute)
-	store.Set("key2", "value2", time.Minute)
+	store.Set("key1", "value1", deadline(time.Minute))
+	store.Set("key2", "value2", deadline(time.Minute))
 
 	if val, ok := store.Get("key1"); !ok || val != "value1" {
 		t.Errorf("Expected value1, got %v", val)
@@ -51,7 +56,7 @@ func TestMaxSize(t *testing.T) {
 		t.Error("Expected key3 to not exist")
 	}
 
-	store.Set("key3", "value3", time.Minute)
+	store.Set("key3", "value3", deadline(time.Minute))
 	if _, ok := store.Get("key1"); ok {
 		t.Error("Expected key1 to not exist")
 	}
@@ -72,8 +77,8 @@ func TestMaxSize(t *testing.T) {
 func TestExpiration(t *testing.T) {
 	store := New[string, string](100)
 
-	store.Set("key1", "value1", 100*time.Millisecond)
-	store.Set("key2", "value2", 200*time.Millisecond)
+	store.Set("key1", "value1", deadline(100*time.Millisecond))
+	store.Set("key2", "value2", deadline(200*time.Millisecond))
 
 	time.Sleep(50 * time.Millisecond)
 	if val, ok := store.Get("key1"); !ok || val != "value1" {
@@ -96,8 +101,8 @@ func TestExpiration(t *testing.T) {
 func TestDelete(t *testing.T) {
 	store := New[string, string](100)
 
-	store.Set("key1", "value1", time.Minute)
-	store.Set("key2", "value2", time.Minute)
+	store.Set("key1", "value1", deadline(time.Minute))
+	store.Set("key2", "value2", deadline(time.Minute))
 
 	store.Delete("key1")
 	if _, ok := store.Get("key1"); ok {
@@ -117,7 +122,7 @@ func TestConcurrentAccess(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		for i := 0; i < 1000; i++ {
-			store.Set("key", i, time.Minute)
+			store.Set("key", i, deadline(time.Minute))
 		}
 	}()
 
@@ -134,8 +139,8 @@ func TestConcurrentAccess(t *testing.T) {
 func TestCleanup(t *testing.T) {
 	store := New[string, string](100)
 
-	store.Set("key1", "value1", 100*time.Millisecond)
-	store.Set("key2", "value2", 200*time.Millisecond)
+	store.Set("key1", "value1", deadline(100*time.Millisecond))
+	store.Set("key2", "value2", deadline(200*time.Millisecond))
 
 	time.Sleep(300 * time.Millisecond)
 
@@ -150,8 +155,8 @@ func TestCleanup(t *testing.T) {
 func TestResize(t *testing.T) {
 	store := New[string, string](3)
 
-	store.Set("key1", "value1", 100*time.Millisecond)
-	store.Set("key2", "value2", 200*time.Millisecond)
+	store.Set("key1", "value1", deadline(100*time.Millisecond))
+	store.Set("key2", "value2", deadline(200*time.Millisecond))
 
 	store.Resize(1)
 
