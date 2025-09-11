@@ -45,7 +45,7 @@ func (r *SystemResolver) Lookup(ctx context.Context, request *Request) (*Respons
 	}
 
 	response := &Response{
-		TTL:    r.ttl,
+		TTL:    &r.ttl,
 		Exists: len(addrs) > 0,
 	}
 

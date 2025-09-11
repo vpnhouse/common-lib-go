@@ -37,7 +37,7 @@ type Response struct {
 	Exists             bool
 	Addresses          []netip.Addr
 	CreatedAt          time.Time
-	TTL                time.Duration
+	TTL                *time.Duration
 	ProtectionRequired bool
 }
 
@@ -50,7 +50,10 @@ func (r *Response) Successful() bool {
 }
 
 func (r *Response) Expired() bool {
-	return time.Since(r.CreatedAt) > r.TTL
+	if r.TTL == nil {
+		return false
+	}
+	return time.Since(r.CreatedAt) > *r.TTL
 }
 
 func (r *Response) AddressesAsStrings() []string {
