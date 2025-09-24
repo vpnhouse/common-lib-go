@@ -135,7 +135,7 @@ func (i *Instance) handleProxy(w http.ResponseWriter, r *http.Request, customInf
 	var proxyReq *http.Request
 	var err error
 	if noBody {
-		proxyReq, err = http.NewRequest(r.Method, r.URL.String(), nil)
+		proxyReq, err = http.NewRequest(r.Method, r.URL.String(), http.NoBody)
 	} else {
 		proxyReq, err = http.NewRequest(r.Method, r.URL.String(),
 			&accounter{
