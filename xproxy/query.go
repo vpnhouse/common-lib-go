@@ -243,6 +243,6 @@ func (i *Instance) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unsupported protocol version", http.StatusHTTPVersionNotSupported)
 		return
 	} else {
-		i.handleProxy(w, r, customInfo)
+		i.handleProxy(w, r, customInfo, false, false)
 	}
 }
