@@ -2,11 +2,9 @@ package xproxy
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"net/http"
-	"net/http/httputil"
 	"sync"
 
 	"github.com/posener/h2conn"
@@ -119,7 +117,7 @@ func (i *Instance) handleV2Connect(w http.ResponseWriter, r *http.Request, custo
 	wg.Wait()
 }
 
-func (i *Instance) handleProxy(w http.ResponseWriter, r *http.Request, customInfo any) {
+func (i *Instance) handleProxy(w http.ResponseWriter, r *http.Request, customInfo any, allowHttps, noBody bool) {
 	// We can't actually receive remote url scheme from HTTP2 connection.
 	// If it's fixed in golang - feel free to remove it. Also check listener to enable HTTP2 back.
 	if r.ProtoMajor == 2 {
@@ -127,20 +125,26 @@ func (i *Instance) handleProxy(w http.ResponseWriter, r *http.Request, customInf
 	}
 
 	// Check if we do not process https as plain text
-	if r.URL.Scheme == "https" && r.Method != http.MethodOptions {
+	if !allowHttps && r.URL.Scheme == "https" {
 		zap.L().Warn("Attempt to proxy https", zap.String("host", r.URL.Host))
 		http.Error(w, "Proxying HTTPS as plain text is dumb idea", http.StatusTeapot)
 		return
 	}
 
 	// Create new request
-	proxyReq, err := http.NewRequest(r.Method, r.URL.String(),
-		&accounter{
-			customInfo,
-			i.StatsReportTx,
-			r.Body,
-		},
-	)
+	var proxyReq *http.Request
+	var err error
+	if noBody {
+		proxyReq, err = http.NewRequest(r.Method, r.URL.String(), nil)
+	} else {
+		proxyReq, err = http.NewRequest(r.Method, r.URL.String(),
+			&accounter{
+				customInfo,
+				i.StatsReportTx,
+				r.Body,
+			},
+		)
+	}
 	if err != nil {
 		zap.L().Error("Error creating proxy request", zap.Error(err))
 		http.Error(w, "Error creating proxy request", http.StatusInternalServerError)
@@ -180,14 +184,16 @@ func (i *Instance) handleProxy(w http.ResponseWriter, r *http.Request, customInf
 	// Set the status code of the original response to the status code of the proxy response
 	w.WriteHeader(resp.StatusCode)
 
-	// Copy the body of the proxy response to the original response
-	io.Copy(w,
-		&accounter{
-			customInfo,
-			i.StatsReportTx,
-			resp.Body,
-		},
-	)
+	if !noBody {
+		// Copy the body of the proxy response to the original response
+		io.Copy(w,
+			&accounter{
+				customInfo,
+				i.StatsReportTx,
+				resp.Body,
+			},
+		)
+	}
 }
 func (i *Instance) handleAuth(r *http.Request) (customInfo any, err error) {
 	if i.AuthCallback == nil {
@@ -208,34 +214,22 @@ func (i *Instance) handleAuth(r *http.Request) (customInfo any, err error) {
 }
 
 func (i *Instance) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
+		i.handleProxy(w, r, "CORS", true, true)
+		return
+	}
+
 	customInfo, err := i.handleAuth(r)
 	if err != nil {
-		// Preflight requests never send authorization headers
-		// To prevent annoying users with login form simply bypass request to the target host
-		// to get valid response
-		if r.Method != http.MethodOptions {
-			dump, _ := httputil.DumpRequest(r, true)
-			zap.L().Info("Proxy authentication failed", zap.Error(err), zap.String("request", string(dump)))
-			name := "proxy"
-			if i.Name != "" {
-				name = i.Name
-			}
-			w.Header()["Proxy-Authenticate"] = []string{fmt.Sprintf("Basic realm=\"%s\"", name)}
-			if errors.Is(err, ErrCantExtractAuthInfo) {
-				// For 99% cases it's prefight request
-				// https://stackoverflow.com/a/73561747
-				w.Header()["Access-Control-Allow-Private-Network"] = []string{"true"}
-			}
-			http.Error(w, "Proxy authentication required", http.StatusProxyAuthRequired)
-			return
-		}
-		zap.L().Info("Bypass proxy OPTIONS request to target server")
+		zap.L().Info("Proxy authentication failed", zap.Error(err))
+		w.Header()["Proxy-Authenticate"] = []string{"Basic realm=\"proxy\""}
+		http.Error(w, "Proxy authentication required", http.StatusProxyAuthRequired)
+		return
 	}
 
 	defer i.ReleaseCallback(customInfo)
 
-	if r.Method == http.MethodConnect {
-
+	if r.Method == "CONNECT" {
 		if r.ProtoMajor == 1 {
 			i.handleV1Connect(w, r, customInfo)
 			return
