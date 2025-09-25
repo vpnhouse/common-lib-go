@@ -29,7 +29,6 @@ type (
 )
 
 type Instance struct {
-	Name            string
 	MarkHeaderName  string
 	Transport       Transport
 	AuthCallback    Authorizer
