@@ -120,7 +120,6 @@ func (i *Instance) handleV2Connect(w http.ResponseWriter, r *http.Request, custo
 func (i *Instance) handleProxy(w http.ResponseWriter, r *http.Request, isCORS bool, customInfo any) {
 	// We can't actually receive remote url scheme from HTTP2 connection.
 	// If it's fixed in golang - feel free to remove it. Also check listener to enable HTTP2 back.
-	zap.L().Debug("handleProxy", zap.Int("protoP", r.ProtoMajor), zap.String("URL", r.URL.String()))
 	if r.ProtoMajor == 2 {
 		http.Error(w, "Bad request", http.StatusHTTPVersionNotSupported)
 	}
