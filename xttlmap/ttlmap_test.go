@@ -6,9 +6,9 @@ import (
 	"time"
 )
 
-func deadline(ttl time.Duration) *time.Time {
+func deadline(ttl time.Duration) time.Time {
 	t := time.Now().Add(ttl)
-	return &t
+	return t
 }
 
 func TestSetGet(t *testing.T) {

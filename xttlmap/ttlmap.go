@@ -7,11 +7,11 @@ import (
 
 type item[V any] struct {
 	value    V
-	deadline *time.Time
+	deadline time.Time
 }
 
 func (s *item[V]) expired(now time.Time) bool {
-	if s.deadline == nil {
+	if s.deadline.IsZero() {
 		return false
 	}
 
@@ -57,7 +57,7 @@ func (s *TTLMap[K, V]) Resize(maxSize int) {
 	s.maxSize = maxSize
 }
 
-func (s *TTLMap[K, V]) Set(key K, value V, deadline *time.Time) {
+func (s *TTLMap[K, V]) Set(key K, value V, deadline time.Time) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
