@@ -116,7 +116,8 @@ func (i *Instance) handleV2Connect(w http.ResponseWriter, r *http.Request, custo
 	wg.Wait()
 }
 
-func (i *Instance) handleProxy(w http.ResponseWriter, r *http.Request, customInfo any, allowHttps, noBody bool) {
+// Note: customInfo must be ignored if isCORS is set
+func (i *Instance) handleProxy(w http.ResponseWriter, r *http.Request, isCORS bool, customInfo any) {
 	// We can't actually receive remote url scheme from HTTP2 connection.
 	// If it's fixed in golang - feel free to remove it. Also check listener to enable HTTP2 back.
 	if r.ProtoMajor == 2 {
@@ -124,7 +125,7 @@ func (i *Instance) handleProxy(w http.ResponseWriter, r *http.Request, customInf
 	}
 
 	// Check if we do not process https as plain text
-	if !allowHttps && r.URL.Scheme == "https" {
+	if !isCORS && r.URL.Scheme == "https" {
 		zap.L().Warn("Attempt to proxy https", zap.String("host", r.URL.Host))
 		http.Error(w, "Proxying HTTPS as plain text is dumb idea", http.StatusTeapot)
 		return
@@ -133,7 +134,7 @@ func (i *Instance) handleProxy(w http.ResponseWriter, r *http.Request, customInf
 	// Create new request
 	var proxyReq *http.Request
 	var err error
-	if noBody {
+	if isCORS {
 		proxyReq, err = http.NewRequest(r.Method, r.URL.String(), http.NoBody)
 	} else {
 		proxyReq, err = http.NewRequest(r.Method, r.URL.String(),
@@ -183,7 +184,7 @@ func (i *Instance) handleProxy(w http.ResponseWriter, r *http.Request, customInf
 	// Set the status code of the original response to the status code of the proxy response
 	w.WriteHeader(resp.StatusCode)
 
-	if !noBody {
+	if !isCORS {
 		// Copy the body of the proxy response to the original response
 		io.Copy(w,
 			&accounter{
@@ -214,7 +215,7 @@ func (i *Instance) handleAuth(r *http.Request) (customInfo any, err error) {
 
 func (i *Instance) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
-		i.handleProxy(w, r, "CORS", true, true)
+		i.handleProxy(w, r, true, nil)
 		return
 	}
 
@@ -242,6 +243,6 @@ func (i *Instance) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unsupported protocol version", http.StatusHTTPVersionNotSupported)
 		return
 	} else {
-		i.handleProxy(w, r, customInfo, false, false)
+		i.handleProxy(w, r, false, customInfo)
 	}
 }
