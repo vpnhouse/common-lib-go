@@ -87,20 +87,20 @@ func (r *CachedResolver) Preset(domain string, queryType uint16, response *Respo
 
 func (r *CachedResolver) cacheResult(key cacheKey, result *Response) {
 	result = result.Clone()
-	var keepDeadline *time.Time
+	var keepDeadline time.Time
 
 	now := time.Now()
-	if result.Expires != nil {
+	if !result.Expires.IsZero() {
 		ttl := result.Expires.Sub(now)
 		if ttl < r.minTtl {
-			*result.Expires = now.Add(r.minTtl)
+			result.Expires = now.Add(r.minTtl)
 		}
 		if ttl > r.minTtl {
-			*result.Expires = now.Add(r.maxTtl)
+			result.Expires = now.Add(r.maxTtl)
 		}
 
 		deadlineValue := now.Add(r.keepTime)
-		keepDeadline = &deadlineValue
+		keepDeadline = deadlineValue
 	}
 
 	r.cache.Set(key, *result, keepDeadline)

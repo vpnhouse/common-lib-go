@@ -46,7 +46,7 @@ func (r *SystemResolver) Lookup(ctx context.Context, request *Request) (*Respons
 
 	expires := time.Now().Add(r.ttl)
 	response := &Response{
-		Expires: &expires,
+		Expires: expires,
 		Exists:  len(addrs) > 0,
 	}
 

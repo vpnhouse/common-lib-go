@@ -129,7 +129,7 @@ func (r *DirectResolver) once(ctx context.Context, request *Request, protected b
 	return &Response{
 		Exists:             true,
 		Addresses:          addresses,
-		Expires:            &expires,
+		Expires:            expires,
 		ProtectionRequired: protected,
 	}, nil
 }

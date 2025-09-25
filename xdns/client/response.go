@@ -9,15 +9,12 @@ import (
 type Response struct {
 	Exists             bool
 	Addresses          []netip.Addr
-	Expires            *time.Time
+	Expires            time.Time
 	ProtectionRequired bool
 }
 
 func (r *Response) Clone() *Response {
 	clone := *r
-
-	expires := *r.Expires
-	clone.Expires = &expires
 
 	return &clone
 }
@@ -27,11 +24,11 @@ func (r *Response) Successful() bool {
 }
 
 func (r *Response) Expired() bool {
-	if r.Expires == nil {
+	if r.Expires.IsZero() {
 		return false
 	}
 
-	return time.Now().After(*r.Expires)
+	return time.Now().After(r.Expires)
 }
 
 func (r *Response) AddressesAsStrings() []string {
