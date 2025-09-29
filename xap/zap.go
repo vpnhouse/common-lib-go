@@ -17,6 +17,9 @@ func ZapType(v interface{}) zap.Field {
 }
 
 func HumanReadableLogger(level string) *zap.Logger {
+	if level == "" {
+		level = "info"
+	}
 	var logLevel zap.AtomicLevel
 	if err := logLevel.UnmarshalText([]byte(level)); err != nil {
 		panic("failed to parse log level: + " + err.Error())
