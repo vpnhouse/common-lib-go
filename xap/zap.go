@@ -16,9 +16,28 @@ func ZapType(v interface{}) zap.Field {
 	return zap.String("type", fmt.Sprintf("%T", v))
 }
 
-func Production(lvl zap.AtomicLevel) *zap.Logger {
-	loggerConfig := zap.NewProductionConfig()
-	loggerConfig.Level = lvl
+func HumanReadableLogger(level string) *zap.Logger {
+	if level == "" {
+		level = "info"
+	}
+	var logLevel zap.AtomicLevel
+	if err := logLevel.UnmarshalText([]byte(level)); err != nil {
+		panic("failed to parse log level: + " + err.Error())
+	}
+
+	encoder := zap.NewDevelopmentEncoderConfig()
+	encoder.EncodeLevel = zapcore.CapitalColorLevelEncoder
+
+	loggerConfig := zap.Config{
+		Development:       false,
+		Level:             logLevel,
+		OutputPaths:       []string{"stdout"},
+		ErrorOutputPaths:  []string{"stderr"},
+		Encoding:          "console",
+		EncoderConfig:     encoder,
+		DisableStacktrace: false,
+	}
+
 	z, err := loggerConfig.Build()
 	if err != nil {
 		panic(err)
@@ -27,20 +46,9 @@ func Production(lvl zap.AtomicLevel) *zap.Logger {
 	return z
 }
 
-func Development() *zap.Logger {
-	encoder := zap.NewDevelopmentEncoderConfig()
-	encoder.EncodeLevel = zapcore.CapitalColorLevelEncoder
-
-	loggerConfig := zap.Config{
-		Development:       false,
-		Level:             zap.NewAtomicLevelAt(zapcore.DebugLevel),
-		OutputPaths:       []string{"stdout"},
-		ErrorOutputPaths:  []string{"stderr"},
-		Encoding:          "console",
-		EncoderConfig:     encoder,
-		DisableStacktrace: false,
-	}
-
+func JSONFormattedLogger(lvl zap.AtomicLevel) *zap.Logger {
+	loggerConfig := zap.NewProductionConfig()
+	loggerConfig.Level = lvl
 	z, err := loggerConfig.Build()
 	if err != nil {
 		panic(err)
