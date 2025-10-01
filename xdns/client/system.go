@@ -44,9 +44,10 @@ func (r *SystemResolver) Lookup(ctx context.Context, request *Request) (*Respons
 		return nil, ErrDNSEmptyResponse
 	}
 
+	expires := time.Now().Add(r.ttl)
 	response := &Response{
-		TTL:    r.ttl,
-		Exists: len(addrs) > 0,
+		Expires: expires,
+		Exists:  len(addrs) > 0,
 	}
 
 	for _, addr := range addrs {
