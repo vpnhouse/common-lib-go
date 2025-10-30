@@ -50,6 +50,16 @@ func NewCapabilitySet(caps ...*Capability) *CapabilitySet {
 	return result
 }
 
+func MustParseCapabilitySet(str string) *CapabilitySet {
+	c, _ := ParseCapabilitySet(str, true)
+	return c
+}
+
+func MustParseCapabilitySetPtr(str *string) *CapabilitySet {
+	c, _ := ParseCapabilitySetPtr(str, true)
+	return c
+}
+
 func ParseCapabilitySet(str string, ignoreUnknown bool) (*CapabilitySet, error) {
 	return ParseCapabilitySetPtr(&str, ignoreUnknown)
 }
