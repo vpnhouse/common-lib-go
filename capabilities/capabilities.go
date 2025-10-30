@@ -37,6 +37,10 @@ func (s *Capability) String() string {
 	return s.name
 }
 
+func (s *Capability) Stringp() *string {
+	return &s.name
+}
+
 func ParseCapabilitySet(str string, ignoreUnknown bool) (*CapabilitySet, error) {
 	result := &CapabilitySet{}
 	tokens := strings.Split(str, ",")
@@ -82,4 +86,9 @@ func (s *CapabilitySet) String() string {
 	}
 
 	return result
+}
+
+func (s *CapabilitySet) Stringp() *string {
+	str := s.String()
+	return &str
 }
