@@ -115,7 +115,7 @@ func (s *CapabilitySet) String() string {
 		return ""
 	}
 
-	result := s.set[0].String()
+	result := s.set[0].id
 	for idx := 1; idx < len(s.set); idx++ {
 		result += "," + s.set[idx].id
 	}
