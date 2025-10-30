@@ -20,6 +20,23 @@ var (
 	CapabilityGhost = &Capability{"gh", "Ghost"}
 )
 
+func ParseCapability(str string) (*Capability, error) {
+	switch strings.ToLower(str) {
+	case "gh":
+		return CapabilityGhost, nil
+	}
+
+	return nil, ErrUnknown
+}
+
+func (s *Capability) Is(other *Capability) bool {
+	return s.id == other.id
+}
+
+func (s *Capability) String() string {
+	return s.name
+}
+
 func ParseCapabilitySet(str string, ignoreUnknown bool) (*CapabilitySet, error) {
 	result := &CapabilitySet{}
 	tokens := strings.Split(str, ",")
@@ -54,19 +71,15 @@ func (s *CapabilitySet) Contains(c *Capability) bool {
 	return false
 }
 
-func ParseCapability(str string) (*Capability, error) {
-	switch strings.ToLower(str) {
-	case "gh":
-		return CapabilityGhost, nil
+func (s *CapabilitySet) String() string {
+	if len(s.set) == 0 {
+		return ""
 	}
 
-	return nil, ErrUnknown
-}
+	result := s.set[0].String()
+	for idx := 1; idx < len(s.set); idx++ {
+		result += "," + s.set[idx].id
+	}
 
-func (s *Capability) String() string {
-	return s.name
-}
-
-func (s *Capability) Is(other *Capability) bool {
-	return s.id == other.id
+	return result
 }
