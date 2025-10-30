@@ -41,6 +41,15 @@ func (s *Capability) Stringp() *string {
 	return &s.name
 }
 
+func NewCapabilitySet(caps ...*Capability) *CapabilitySet {
+	result := &CapabilitySet{}
+	for _, c := range caps {
+		result.Set(c)
+	}
+
+	return result
+}
+
 func ParseCapabilitySet(str string, ignoreUnknown bool) (*CapabilitySet, error) {
 	result := &CapabilitySet{}
 	tokens := strings.Split(str, ",")
