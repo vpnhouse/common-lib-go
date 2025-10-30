@@ -51,8 +51,16 @@ func NewCapabilitySet(caps ...*Capability) *CapabilitySet {
 }
 
 func ParseCapabilitySet(str string, ignoreUnknown bool) (*CapabilitySet, error) {
+	return ParseCapabilitySetPtr(&str, ignoreUnknown)
+}
+
+func ParseCapabilitySetPtr(str *string, ignoreUnknown bool) (*CapabilitySet, error) {
+	if str == nil {
+		return nil, nil
+	}
+
 	result := &CapabilitySet{}
-	tokens := strings.Split(str, ",")
+	tokens := strings.Split(*str, ",")
 	for _, t := range tokens {
 		c, err := ParseCapability(t)
 		if err != nil {
