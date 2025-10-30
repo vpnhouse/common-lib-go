@@ -75,6 +75,10 @@ func (s *CapabilitySet) Set(c *Capability) {
 }
 
 func (s *CapabilitySet) Contains(c *Capability) bool {
+	if s == nil {
+		return false
+	}
+
 	for _, sc := range s.set {
 		if sc.Is(c) {
 			return true
@@ -85,6 +89,10 @@ func (s *CapabilitySet) Contains(c *Capability) bool {
 }
 
 func (s *CapabilitySet) String() string {
+	if s == nil {
+		return ""
+	}
+
 	if len(s.set) == 0 {
 		return ""
 	}
