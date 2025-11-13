@@ -25,6 +25,10 @@ func ParseJSON(v []byte) (Entitlements, error) {
 	return s, nil
 }
 
+func (s Entitlements) Raw() map[string]any {
+	return s
+}
+
 func (s Entitlements) JSON() ([]byte, error) {
 	return json.Marshal(s)
 }
