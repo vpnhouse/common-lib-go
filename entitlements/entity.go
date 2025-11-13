@@ -1,6 +1,9 @@
 package entitlements
 
-import "strconv"
+import (
+	"encoding/json"
+	"strconv"
+)
 
 type Entitlements map[string]any
 
@@ -12,6 +15,19 @@ const (
 	ShapeUpstream   = "shape_upstream"
 	Ads             = "ads"
 )
+
+func ParseJSON(v []byte) (Entitlements, error) {
+	s := Entitlements{}
+	err := json.Unmarshal(v, &s)
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+func (s Entitlements) JSON() ([]byte, error) {
+	return json.Marshal(s)
+}
 
 func (s Entitlements) SetWireguard(v bool) {
 	s[Wireguard] = v
