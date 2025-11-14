@@ -25,11 +25,11 @@ func ParseJSON(v []byte) (Entitlements, error) {
 	return s, nil
 }
 
-func (s Entitlements) Raw() map[string]any {
+func (s Entitlements) AsMap() map[string]any {
 	return s
 }
 
-func (s Entitlements) RawPtr() *map[string]any {
+func (s Entitlements) AsMapPtr() *map[string]any {
 	var m map[string]any = s
 	return &m
 }
