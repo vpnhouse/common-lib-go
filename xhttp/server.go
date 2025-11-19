@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -101,7 +102,10 @@ func WithPprof() Option {
 }
 
 type Server struct {
-	srv       *http.Server
+	ctx    context.Context
+	cancel context.CancelFunc
+	wg     sync.WaitGroup
+
 	tlsConfig *tls.Config
 	router    chi.Router
 	disablev2 bool
@@ -109,7 +113,7 @@ type Server struct {
 
 // Run starts the http server asynchronously.
 func (w *Server) Run(addr string) error {
-	w.srv = &http.Server{
+	srv := &http.Server{
 		Handler:     w.router,
 		Addr:        addr,
 		TLSConfig:   w.tlsConfig,
@@ -117,7 +121,7 @@ func (w *Server) Run(addr string) error {
 	}
 
 	if w.disablev2 {
-		w.srv.TLSNextProto = make(map[string]func(*http.Server, *tls.Conn, http.Handler))
+		srv.TLSNextProto = make(map[string]func(*http.Server, *tls.Conn, http.Handler))
 	}
 
 	lis, err := net.Listen("tcp", addr)
@@ -127,12 +131,24 @@ func (w *Server) Run(addr string) error {
 
 	withTLS := w.tlsConfig != nil
 	zap.L().Info("starting HTTP server", zap.String("addr", addr), zap.Bool("with_tls", withTLS))
+
+	w.wg.Add(2)
 	go func() {
+		defer w.wg.Done()
+
+		defer w.cancel()
+		<-w.ctx.Done()
+		srv.Shutdown(context.Background())
+	}()
+
+	go func() {
+		defer w.wg.Done()
+
 		var err error
 		if withTLS {
-			err = w.srv.ServeTLS(lis, "", "")
+			err = srv.ServeTLS(lis, "", "")
 		} else {
-			err = w.srv.Serve(lis)
+			err = srv.Serve(lis)
 		}
 
 		if err != nil {
@@ -174,7 +190,12 @@ func New(opts ...Option) *Server {
 		_ = json.NewEncoder(w).Encode(err)
 	})
 
-	h := &Server{router: r}
+	ctx, cancel := context.WithCancel(context.Background())
+	h := &Server{
+		ctx:    ctx,
+		cancel: cancel,
+		router: r,
+	}
 	for _, o := range opts {
 		o(h)
 	}
@@ -247,15 +268,11 @@ func NewRedirectToSSL(primaryHost string) *Server {
 }
 
 func (w *Server) Shutdown() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	err := w.srv.Shutdown(ctx)
-	w.srv = nil
-
-	return err
+	w.cancel()
+	w.wg.Wait()
+	return nil
 }
 
 func (w *Server) Running() bool {
-	return w.srv != nil
+	return w.ctx.Err() == nil
 }

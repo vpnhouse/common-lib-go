@@ -23,6 +23,7 @@ type Runtime interface {
 func Exec(r Runtime) {
 	// Shutdown services whenever application terminates
 	defer func(r Runtime) {
+		defer zap.L().Debug("Initiating service shutdown")
 		err := r.Stop()
 		if err != nil {
 			zap.L().Fatal("can't stop services", zap.Error(err))
@@ -58,6 +59,7 @@ func Exec(r Runtime) {
 				return
 			}
 		case event := <-eventChannel:
+			zap.L().Debug("Processing event", zap.Any("event", event))
 			r.ProcessEvents(event)
 		}
 	}
