@@ -23,7 +23,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	metrics "github.com/slok/go-http-metrics/metrics/prometheus"
 	"github.com/slok/go-http-metrics/middleware"
-	middlewarestd "github.com/slok/go-http-metrics/middleware/std"
 	openapi "github.com/vpnhouse/api/go/server/common"
 	"go.uber.org/zap"
 	"golang.org/x/net/idna"
@@ -51,36 +50,6 @@ func WithMiddleware(mw Middleware) Option {
 	return func(w *Server) {
 		w.router.Middlewares()
 		w.router.Use(mw)
-	}
-}
-
-func WithMetrics() Option {
-	return func(w *Server) {
-		// the measurement middleware
-		w.router.Use(func(handler http.Handler) http.Handler {
-			return middlewarestd.Handler("", measureMW, handler)
-		})
-		// route to obtain metrics
-		w.router.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
-			s := strings.SplitN(r.RemoteAddr, ":", 2)
-			zap.L().Debug("Metrics requested", zap.String("addr", s[0]))
-			addr := netip.MustParseAddr(s[0])
-			isAllowed := false
-			for _, allowed := range MetricsSourceAllowed {
-				if allowed.Contains(addr) {
-					isAllowed = true
-					break
-				}
-			}
-
-			if !isAllowed {
-				notFoundHandler(w, r)
-				return
-			}
-
-			promhttp.Handler().ServeHTTP(w, r)
-
-		})
 	}
 }
 
@@ -216,15 +185,12 @@ func New(opts ...Option) *Server {
 func NewDefault() *Server {
 	return New(
 		WithLogger(),
-		// WithMetrics must be declared last
-		WithMetrics(),
 	)
 }
 
 func NewDefaultSSL(cfg *tls.Config) *Server {
 	return New(
 		WithLogger(),
-		WithMetrics(),
 		WithSSL(cfg),
 	)
 }
@@ -252,32 +218,29 @@ func discoverRequestHost(r *http.Request) (string, error) {
 func NewRedirectToSSL(primaryHost string) *Server {
 	r := chi.NewRouter()
 	r.HandleFunc("/*", func(w http.ResponseWriter, r *http.Request) {
-		host, err := discoverRequestHost(r)
-		if err != nil {
-			if primaryHost != "" {
-				zap.L().Info("Can't determine request hostname, using primary", zap.Error(err))
-				host = primaryHost
-			} else {
-				zap.L().Error("Can't determine redirection URL")
-				w.Header().Set("Upgrade", "TLS/1.2, HTTP/1.1")
-				w.WriteHeader(http.StatusUpgradeRequired)
-				return
-			}
-		}
-
-		url2 := *r.URL
-		url2.Scheme = "https"
-		url2.Host = host
-		w.Header().Set("Location", url2.String())
-		w.WriteHeader(http.StatusTemporaryRedirect)
+		redirectHandler(primaryHost, w, r)
 	})
 
 	ctx, cancel := context.WithCancel(context.Background())
-	return &Server{
+	h := &Server{
 		ctx:    ctx,
 		cancel: cancel,
 		router: r,
 	}
+	return h
+}
+
+func NewMetrics() *Server {
+	r := chi.NewRouter()
+	r.Handle("/metrics", promhttp.Handler())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	h := &Server{
+		ctx:    ctx,
+		cancel: cancel,
+		router: r,
+	}
+	return h
 }
 
 func (w *Server) Shutdown() error {
@@ -308,4 +271,25 @@ func notAllowedHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusMethodNotAllowed)
 	_ = json.NewEncoder(w).Encode(err)
+}
+
+func redirectHandler(primaryHost string, w http.ResponseWriter, r *http.Request) {
+	host, err := discoverRequestHost(r)
+	if err != nil {
+		if primaryHost != "" {
+			zap.L().Info("Can't determine request hostname, using primary", zap.Error(err))
+			host = primaryHost
+		} else {
+			zap.L().Error("Can't determine redirection URL")
+			w.Header().Set("Upgrade", "TLS/1.2, HTTP/1.1")
+			w.WriteHeader(http.StatusUpgradeRequired)
+			return
+		}
+	}
+
+	url2 := *r.URL
+	url2.Scheme = "https"
+	url2.Host = host
+	w.Header().Set("Location", url2.String())
+	w.WriteHeader(http.StatusTemporaryRedirect)
 }
