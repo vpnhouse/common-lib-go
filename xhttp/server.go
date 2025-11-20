@@ -262,7 +262,10 @@ func NewRedirectToSSL(primaryHost string) *Server {
 		w.WriteHeader(http.StatusTemporaryRedirect)
 	})
 
+	ctx, cancel := context.WithCancel(context.Background())
 	return &Server{
+		ctx:    ctx,
+		cancel: cancel,
 		router: r,
 	}
 }
