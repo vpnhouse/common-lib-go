@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/netip"
 	"strconv"
 	"strings"
 	"sync"
@@ -31,10 +32,16 @@ import (
 )
 
 // initialize the measuring middleware only once
-var measureMW = middleware.New(middleware.Config{
-	Recorder:      metrics.NewRecorder(metrics.Config{}),
-	GroupedStatus: true,
-})
+var (
+	measureMW = middleware.New(middleware.Config{
+		Recorder:      metrics.NewRecorder(metrics.Config{}),
+		GroupedStatus: true,
+	})
+	MetricsSourceAllowed = []netip.Prefix{
+		netip.MustParsePrefix("127.0.0.0/8"),
+		netip.MustParsePrefix("172.16.0.0/12"),
+	}
+)
 
 type Middleware = func(http.Handler) http.Handler
 
@@ -54,7 +61,26 @@ func WithMetrics() Option {
 			return middlewarestd.Handler("", measureMW, handler)
 		})
 		// route to obtain metrics
-		w.router.Handle("/metrics", promhttp.Handler())
+		w.router.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
+			s := strings.SplitN(r.RemoteAddr, ":", 2)
+			zap.L().Debug("Metrics requested", zap.String("addr", s[0]))
+			addr := netip.MustParseAddr(s[0])
+			isAllowed := false
+			for _, allowed := range MetricsSourceAllowed {
+				if allowed.Contains(addr) {
+					isAllowed = true
+					break
+				}
+			}
+
+			if !isAllowed {
+				notFoundHandler(w, r)
+				return
+			}
+
+			promhttp.Handler().ServeHTTP(w, r)
+
+		})
 	}
 }
 
@@ -171,24 +197,8 @@ func (w *Server) Router() chi.Router {
 func New(opts ...Option) *Server {
 	r := chi.NewRouter()
 	// always respond with JSON by using the custom error handlers
-	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		txt := "Not found"
-		err := openapi.Error{
-			Result: "404",
-			Error:  &txt,
-		}
-		w.WriteHeader(http.StatusNotFound)
-		_ = json.NewEncoder(w).Encode(err)
-	})
-	r.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
-		txt := "Method not allowed"
-		err := openapi.Error{
-			Result: "405",
-			Error:  &txt,
-		}
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		_ = json.NewEncoder(w).Encode(err)
-	})
+	r.NotFound(notFoundHandler)
+	r.MethodNotAllowed(notAllowedHandler)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	h := &Server{
@@ -278,4 +288,24 @@ func (w *Server) Shutdown() error {
 
 func (w *Server) Running() bool {
 	return w.ctx.Err() == nil
+}
+
+func notFoundHandler(w http.ResponseWriter, r *http.Request) {
+	txt := "Not found"
+	err := openapi.Error{
+		Result: "404",
+		Error:  &txt,
+	}
+	w.WriteHeader(http.StatusNotFound)
+	_ = json.NewEncoder(w).Encode(err)
+}
+
+func notAllowedHandler(w http.ResponseWriter, r *http.Request) {
+	txt := "Method not allowed"
+	err := openapi.Error{
+		Result: "405",
+		Error:  &txt,
+	}
+	w.WriteHeader(http.StatusMethodNotAllowed)
+	_ = json.NewEncoder(w).Encode(err)
 }
