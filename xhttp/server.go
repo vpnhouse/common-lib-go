@@ -23,6 +23,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	metrics "github.com/slok/go-http-metrics/metrics/prometheus"
 	"github.com/slok/go-http-metrics/middleware"
+	middlewarestd "github.com/slok/go-http-metrics/middleware/std"
 	openapi "github.com/vpnhouse/api/go/server/common"
 	"go.uber.org/zap"
 	"golang.org/x/net/idna"
@@ -168,6 +169,11 @@ func New(opts ...Option) *Server {
 	// always respond with JSON by using the custom error handlers
 	r.NotFound(notFoundHandler)
 	r.MethodNotAllowed(notAllowedHandler)
+
+	// the measurement middleware
+	r.Use(func(handler http.Handler) http.Handler {
+		return middlewarestd.Handler("", measureMW, handler)
+	})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	h := &Server{
