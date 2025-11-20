@@ -97,6 +97,15 @@ func WithPprof() Option {
 	}
 }
 
+func WithHTTPMeasure() Option {
+	return func(w *Server) {
+		// the measurement middleware
+		w.router.Use(func(handler http.Handler) http.Handler {
+			return middlewarestd.Handler("", measureMW, handler)
+		})
+	}
+}
+
 type Server struct {
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -169,11 +178,6 @@ func New(opts ...Option) *Server {
 	// always respond with JSON by using the custom error handlers
 	r.NotFound(notFoundHandler)
 	r.MethodNotAllowed(notAllowedHandler)
-
-	// the measurement middleware
-	r.Use(func(handler http.Handler) http.Handler {
-		return middlewarestd.Handler("", measureMW, handler)
-	})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	h := &Server{
