@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -43,17 +44,6 @@ func WithMiddleware(mw Middleware) Option {
 	return func(w *Server) {
 		w.router.Middlewares()
 		w.router.Use(mw)
-	}
-}
-
-func WithMetrics() Option {
-	return func(w *Server) {
-		// the measurement middleware
-		w.router.Use(func(handler http.Handler) http.Handler {
-			return middlewarestd.Handler("", measureMW, handler)
-		})
-		// route to obtain metrics
-		w.router.Handle("/metrics", promhttp.Handler())
 	}
 }
 
@@ -100,8 +90,20 @@ func WithPprof() Option {
 	}
 }
 
+func WithHTTPMeasure() Option {
+	return func(w *Server) {
+		// the measurement middleware
+		w.router.Use(func(handler http.Handler) http.Handler {
+			return middlewarestd.Handler("", measureMW, handler)
+		})
+	}
+}
+
 type Server struct {
-	srv       *http.Server
+	ctx    context.Context
+	cancel context.CancelFunc
+	wg     sync.WaitGroup
+
 	tlsConfig *tls.Config
 	router    chi.Router
 	disablev2 bool
@@ -109,7 +111,7 @@ type Server struct {
 
 // Run starts the http server asynchronously.
 func (w *Server) Run(addr string) error {
-	w.srv = &http.Server{
+	srv := &http.Server{
 		Handler:     w.router,
 		Addr:        addr,
 		TLSConfig:   w.tlsConfig,
@@ -117,7 +119,7 @@ func (w *Server) Run(addr string) error {
 	}
 
 	if w.disablev2 {
-		w.srv.TLSNextProto = make(map[string]func(*http.Server, *tls.Conn, http.Handler))
+		srv.TLSNextProto = make(map[string]func(*http.Server, *tls.Conn, http.Handler))
 	}
 
 	lis, err := net.Listen("tcp", addr)
@@ -127,12 +129,23 @@ func (w *Server) Run(addr string) error {
 
 	withTLS := w.tlsConfig != nil
 	zap.L().Info("starting HTTP server", zap.String("addr", addr), zap.Bool("with_tls", withTLS))
+
+	w.wg.Add(2)
 	go func() {
+		defer w.wg.Done()
+
+		<-w.ctx.Done()
+		srv.Shutdown(context.Background())
+	}()
+
+	go func() {
+		defer w.wg.Done()
+
 		var err error
 		if withTLS {
-			err = w.srv.ServeTLS(lis, "", "")
+			err = srv.ServeTLS(lis, "", "")
 		} else {
-			err = w.srv.Serve(lis)
+			err = srv.Serve(lis)
 		}
 
 		if err != nil {
@@ -155,26 +168,15 @@ func (w *Server) Router() chi.Router {
 func New(opts ...Option) *Server {
 	r := chi.NewRouter()
 	// always respond with JSON by using the custom error handlers
-	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		txt := "Not found"
-		err := openapi.Error{
-			Result: "404",
-			Error:  &txt,
-		}
-		w.WriteHeader(http.StatusNotFound)
-		_ = json.NewEncoder(w).Encode(err)
-	})
-	r.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
-		txt := "Method not allowed"
-		err := openapi.Error{
-			Result: "405",
-			Error:  &txt,
-		}
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		_ = json.NewEncoder(w).Encode(err)
-	})
+	r.NotFound(notFoundHandler)
+	r.MethodNotAllowed(notAllowedHandler)
 
-	h := &Server{router: r}
+	ctx, cancel := context.WithCancel(context.Background())
+	h := &Server{
+		ctx:    ctx,
+		cancel: cancel,
+		router: r,
+	}
 	for _, o := range opts {
 		o(h)
 	}
@@ -185,15 +187,12 @@ func New(opts ...Option) *Server {
 func NewDefault() *Server {
 	return New(
 		WithLogger(),
-		// WithMetrics must be declared last
-		WithMetrics(),
 	)
 }
 
 func NewDefaultSSL(cfg *tls.Config) *Server {
 	return New(
 		WithLogger(),
-		WithMetrics(),
 		WithSSL(cfg),
 	)
 }
@@ -221,41 +220,78 @@ func discoverRequestHost(r *http.Request) (string, error) {
 func NewRedirectToSSL(primaryHost string) *Server {
 	r := chi.NewRouter()
 	r.HandleFunc("/*", func(w http.ResponseWriter, r *http.Request) {
-		host, err := discoverRequestHost(r)
-		if err != nil {
-			if primaryHost != "" {
-				zap.L().Info("Can't determine request hostname, using primary", zap.Error(err))
-				host = primaryHost
-			} else {
-				zap.L().Error("Can't determine redirection URL")
-				w.Header().Set("Upgrade", "TLS/1.2, HTTP/1.1")
-				w.WriteHeader(http.StatusUpgradeRequired)
-				return
-			}
-		}
-
-		url2 := *r.URL
-		url2.Scheme = "https"
-		url2.Host = host
-		w.Header().Set("Location", url2.String())
-		w.WriteHeader(http.StatusTemporaryRedirect)
+		redirectHandler(primaryHost, w, r)
 	})
 
-	return &Server{
+	ctx, cancel := context.WithCancel(context.Background())
+	h := &Server{
+		ctx:    ctx,
+		cancel: cancel,
 		router: r,
 	}
+	return h
+}
+
+func NewMetrics() *Server {
+	r := chi.NewRouter()
+	r.Handle("/metrics", promhttp.Handler())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	h := &Server{
+		ctx:    ctx,
+		cancel: cancel,
+		router: r,
+	}
+	return h
 }
 
 func (w *Server) Shutdown() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	err := w.srv.Shutdown(ctx)
-	w.srv = nil
-
-	return err
+	w.cancel()
+	w.wg.Wait()
+	return nil
 }
 
 func (w *Server) Running() bool {
-	return w.srv != nil
+	return w.ctx.Err() == nil
+}
+
+func notFoundHandler(w http.ResponseWriter, r *http.Request) {
+	txt := "Not found"
+	err := openapi.Error{
+		Result: "404",
+		Error:  &txt,
+	}
+	w.WriteHeader(http.StatusNotFound)
+	_ = json.NewEncoder(w).Encode(err)
+}
+
+func notAllowedHandler(w http.ResponseWriter, r *http.Request) {
+	txt := "Method not allowed"
+	err := openapi.Error{
+		Result: "405",
+		Error:  &txt,
+	}
+	w.WriteHeader(http.StatusMethodNotAllowed)
+	_ = json.NewEncoder(w).Encode(err)
+}
+
+func redirectHandler(primaryHost string, w http.ResponseWriter, r *http.Request) {
+	host, err := discoverRequestHost(r)
+	if err != nil {
+		if primaryHost != "" {
+			zap.L().Info("Can't determine request hostname, using primary", zap.Error(err))
+			host = primaryHost
+		} else {
+			zap.L().Error("Can't determine redirection URL")
+			w.Header().Set("Upgrade", "TLS/1.2, HTTP/1.1")
+			w.WriteHeader(http.StatusUpgradeRequired)
+			return
+		}
+	}
+
+	url2 := *r.URL
+	url2.Scheme = "https"
+	url2.Host = host
+	w.Header().Set("Location", url2.String())
+	w.WriteHeader(http.StatusTemporaryRedirect)
 }
