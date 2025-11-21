@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"net/netip"
 	"strconv"
 	"strings"
 	"sync"
@@ -32,16 +31,10 @@ import (
 )
 
 // initialize the measuring middleware only once
-var (
-	measureMW = middleware.New(middleware.Config{
-		Recorder:      metrics.NewRecorder(metrics.Config{}),
-		GroupedStatus: true,
-	})
-	MetricsSourceAllowed = []netip.Prefix{
-		netip.MustParsePrefix("127.0.0.0/8"),
-		netip.MustParsePrefix("172.16.0.0/12"),
-	}
-)
+var measureMW = middleware.New(middleware.Config{
+	Recorder:      metrics.NewRecorder(metrics.Config{}),
+	GroupedStatus: true,
+})
 
 type Middleware = func(http.Handler) http.Handler
 
