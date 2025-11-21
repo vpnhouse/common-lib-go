@@ -134,7 +134,6 @@ func (w *Server) Run(addr string) error {
 	go func() {
 		defer w.wg.Done()
 
-		defer w.cancel()
 		<-w.ctx.Done()
 		srv.Shutdown(context.Background())
 	}()
