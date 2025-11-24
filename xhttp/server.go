@@ -24,7 +24,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	metrics "github.com/slok/go-http-metrics/metrics/prometheus"
 	"github.com/slok/go-http-metrics/middleware"
-	middlewarestd "github.com/slok/go-http-metrics/middleware/std"
 	openapi "github.com/vpnhouse/api/go/server/common"
 	"go.uber.org/zap"
 	"golang.org/x/net/idna"
@@ -93,12 +92,17 @@ func WithPprof() Option {
 	}
 }
 
-func WithHTTPMeasure() Option {
+func WithHTTPMeasure(namespace, subsystem, serviceName string, buckets []float64, allowedPaths []string) Option {
 	return func(w *Server) {
-		// the measurement middleware
-		w.router.Use(func(handler http.Handler) http.Handler {
-			return middlewarestd.Handler("", measureMW, handler)
+		measure := NewMeasure(MeasureOptions{
+			Namespace:    namespace,
+			Subsystem:    subsystem,
+			ServiceName:  serviceName,
+			Buckets:      buckets,
+			AllowedPaths: allowedPaths,
 		})
+
+		w.router.Use(measure.Middleware())
 	}
 }
 
