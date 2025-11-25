@@ -11,10 +11,6 @@ type protector struct {
 	unprotects map[netip.Addr]int
 }
 
-func (p *protector) Lazy() bool {
-	return true
-}
-
 func (p *protector) SocketProtector() func(network, address string, conn syscall.RawConn) error {
 	return func(network, address string, conn syscall.RawConn) error {
 		return nil

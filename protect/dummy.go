@@ -7,10 +7,6 @@ import (
 
 type Dummy struct{}
 
-func (d *Dummy) Lazy() bool {
-	return false
-}
-
 func (d *Dummy) SocketProtector() func(network, address string, conn syscall.RawConn) error {
 	return func(network, address string, conn syscall.RawConn) error {
 		return nil

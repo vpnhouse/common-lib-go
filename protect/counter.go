@@ -21,10 +21,6 @@ func WithProtectCounter(protector Protector) *ProtectCounter {
 	}
 }
 
-func (pc *ProtectCounter) Lazy() bool {
-	return pc.protector.Lazy()
-}
-
 func (pc *ProtectCounter) SocketProtector() func(network, address string, conn syscall.RawConn) error {
 	return pc.protector.SocketProtector()
 }
