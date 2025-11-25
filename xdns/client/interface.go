@@ -31,6 +31,7 @@ var (
 type Request struct {
 	Domain    string
 	QueryType uint16
+	NoLazy    bool
 }
 
 type Response struct {

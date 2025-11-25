@@ -47,7 +47,7 @@ func (r *DirectResolver) WithProtector(protector protect.Protector) *DirectResol
 }
 
 func (r *DirectResolver) Lookup(ctx context.Context, request *Request) (*Response, error) {
-	if r.protector.Lazy() {
+	if !request.NoLazy {
 		response, err := r.once(ctx, request, false)
 		if err == nil {
 			return response, err
