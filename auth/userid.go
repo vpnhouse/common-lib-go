@@ -5,9 +5,8 @@
 package auth
 
 import (
+	"errors"
 	"regexp"
-
-	"github.com/vpnhouse/common-lib-go/xerror"
 )
 
 var (
@@ -18,7 +17,7 @@ var (
 func ParseUserID(v string) (project, auth, userID string, err error) {
 	matches := userIDRegexp.FindStringSubmatch(v)
 	if len(matches) != nParts+1 {
-		err = xerror.EInvalidArgument("invalid user id format", nil)
+		err = errors.New("invalid user id format")
 		return
 	}
 
