@@ -6,11 +6,12 @@ package auth
 
 import (
 	"crypto/rsa"
+	"errors"
+	"fmt"
+
 	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
 	"github.com/vpnhouse/common-lib-go/xcrypto"
-	"github.com/vpnhouse/common-lib-go/xerror"
-	"go.uber.org/zap"
 )
 
 type JWTMaster struct {
@@ -23,7 +24,7 @@ func NewJWTMaster(private *rsa.PrivateKey, privateId *uuid.UUID) (*JWTMaster, er
 	// Generate new private key if it's not given by caller
 	if private == nil {
 		if privateId != nil {
-			return nil, xerror.EInternalError("privateId must be nil when private is nil", nil)
+			return nil, errors.New("privateId must be nil when private is nil")
 		}
 
 		vPrivateId, err := uuid.NewRandom()
@@ -33,20 +34,19 @@ func NewJWTMaster(private *rsa.PrivateKey, privateId *uuid.UUID) (*JWTMaster, er
 
 		privateId = &vPrivateId
 
-		zap.L().Info("generating keys for JWT")
 		private, err = xcrypto.GenerateKey()
 		if err != nil {
-			return nil, xerror.EInternalError("can't generate JWT key pair", err)
+			return nil, fmt.Errorf("can't generate JWT key pair: %w", err)
 		}
 	} else {
 		if privateId == nil {
-			return nil, xerror.EInvalidArgument("privateId must be set when private is set", nil)
+			return nil, errors.New("privateId must be set when private is set")
 		}
 	}
 
 	method := jwt.GetSigningMethod(jwtSigningMethod)
 	if method == nil {
-		return nil, xerror.EInvalidArgument("signing method is not supported", nil, zap.String("method", jwtSigningMethod))
+		return nil, fmt.Errorf("signing method is not supported: %v", jwtSigningMethod)
 	}
 
 	return &JWTMaster{
@@ -64,8 +64,7 @@ func (instance *JWTMaster) Token(claims jwt.Claims) (*string, error) {
 	// Sign token
 	signedToken, err := token.SignedString(instance.private)
 	if err != nil {
-		zap.L().Error("Can't sign auth token", zap.Error(err))
-		return nil, xerror.EInternalError("can't sign token", err)
+		return nil, fmt.Errorf("can't sign token: %w", err)
 	}
 
 	return &signedToken, nil
@@ -77,17 +76,16 @@ func (instance *JWTMaster) Parse(tokenString string, claims jwt.Claims) error {
 	})
 
 	if err != nil || token == nil {
-		return xerror.EAuthenticationFailed("invalid token", err)
+		return fmt.Errorf("invalid token: %w", err)
 	}
 
 	if !token.Valid {
-		return xerror.EAuthenticationFailed("invalid token", nil)
+		return errors.New("token is not valid")
 	}
 
 	method := token.Method.Alg()
 	if method != instance.method.Alg() {
-		zap.L().Error("Invalid signing method", zap.String("method", method), zap.Any("token", token))
-		return xerror.EAuthenticationFailed("invalid token", err)
+		return fmt.Errorf("invalid signine method: %v", method)
 	}
 
 	return nil
