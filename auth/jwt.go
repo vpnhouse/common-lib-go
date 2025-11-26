@@ -6,14 +6,17 @@ package auth
 
 import (
 	"crypto/rsa"
+	"errors"
 	"fmt"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
 	"github.com/vpnhouse/common-lib-go/entitlements"
-	"github.com/vpnhouse/common-lib-go/xap"
-	"github.com/vpnhouse/common-lib-go/xerror"
-	"go.uber.org/zap"
+)
+
+var (
+	ErrUnknownMethod = errors.New("unknown signing method")
+	ErrInvalidToken  = errors.New("invalid token")
 )
 
 const (
@@ -72,7 +75,7 @@ type JWTChecker struct {
 func NewJWTChecker(keyKeeper KeyStore) (*JWTChecker, error) {
 	method := jwt.GetSigningMethod(jwtSigningMethod)
 	if method == nil {
-		return nil, xerror.EInvalidArgument("signing method is not supported", nil, zap.String("method", jwtSigningMethod))
+		return nil, fmt.Errorf("%w: signing method is not supported: %v", ErrUnknownMethod, jwtSigningMethod)
 	}
 
 	return &JWTChecker{
@@ -84,18 +87,17 @@ func NewJWTChecker(keyKeeper KeyStore) (*JWTChecker, error) {
 func (instance *JWTChecker) keyHelper(token *jwt.Token) (interface{}, error) {
 	keyIdValue, ok := token.Header[jwtKeyID]
 	if !ok {
-		return nil, xerror.EAuthenticationFailed("invalid token", nil)
+		return nil, ErrInvalidToken
 	}
 
 	keyID, ok := keyIdValue.(string)
 	if !ok {
-		return nil, xerror.EAuthenticationFailed("got unexpected key value instead of string",
-			nil, xap.ZapType(keyIdValue))
+		return nil, fmt.Errorf("%w: got unexpected key value instead of string: %v", ErrInvalidToken, keyIdValue)
 	}
 
 	keyUUID, err := uuid.Parse(keyID)
 	if err != nil {
-		return nil, xerror.EAuthenticationFailed("invalid token", err)
+		return nil, ErrInvalidToken
 	}
 
 	key, err := instance.keys.GetKey(keyUUID)
@@ -110,21 +112,16 @@ func (instance *JWTChecker) keyHelper(token *jwt.Token) (interface{}, error) {
 func (instance *JWTChecker) Parse(tokenString string, claims jwt.Claims) error {
 	token, err := jwt.ParseWithClaims(tokenString, claims, instance.keyHelper)
 	if err != nil {
-		return xerror.EAuthenticationFailed("invalid token", err)
+		return fmt.Errorf("%w: %w", ErrInvalidToken, err)
 	}
 
 	if !token.Valid {
-		return xerror.EAuthenticationFailed("invalid token", nil)
+		return ErrInvalidToken
 	}
 
 	method := token.Method.Alg()
 	if method != instance.method.Alg() {
-		return xerror.EAuthenticationFailed(
-			"invalid token",
-			fmt.Errorf("invalid signing method"),
-			zap.String("method", method),
-			zap.Any("token", token),
-		)
+		return fmt.Errorf("%w: invalid signing method: %v", ErrInvalidToken, method)
 	}
 
 	return nil
