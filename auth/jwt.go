@@ -15,8 +15,7 @@ import (
 )
 
 var (
-	ErrUnknownMethod = errors.New("unknown signing method")
-	ErrInvalidToken  = errors.New("invalid token")
+	ErrInvalidToken = errors.New("invalid token")
 )
 
 const (
@@ -75,7 +74,7 @@ type JWTChecker struct {
 func NewJWTChecker(keyKeeper KeyStore) (*JWTChecker, error) {
 	method := jwt.GetSigningMethod(jwtSigningMethod)
 	if method == nil {
-		return nil, fmt.Errorf("%w: signing method is not supported: %v", ErrUnknownMethod, jwtSigningMethod)
+		return nil, fmt.Errorf("signing method is not supported: %v", jwtSigningMethod)
 	}
 
 	return &JWTChecker{
