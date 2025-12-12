@@ -20,7 +20,6 @@ import (
 	chi_middleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	metrics "github.com/slok/go-http-metrics/metrics/prometheus"
 	"github.com/slok/go-http-metrics/middleware"
@@ -237,20 +236,11 @@ func NewRedirectToSSL(primaryHost string) *Server {
 func NewMetrics(labels map[string]string) *Server {
 	r := chi.NewRouter()
 
-	registry := prometheus.NewRegistry()
-
-	var registerer prometheus.Registerer = registry
 	if len(labels) > 0 {
-		registerer = prometheus.WrapRegistererWith(labels, registry)
+		prometheus.DefaultRegisterer = prometheus.WrapRegistererWith(labels, prometheus.DefaultRegisterer)
 	}
 
-	registerer.MustRegister(
-		collectors.NewGoCollector(),
-		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
-		collectors.NewBuildInfoCollector(),
-	)
-
-	r.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
+	r.Handle("/metrics", promhttp.Handler())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	h := &Server{
