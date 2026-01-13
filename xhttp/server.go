@@ -22,8 +22,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	metrics "github.com/slok/go-http-metrics/metrics/prometheus"
-	"github.com/slok/go-http-metrics/middleware"
 	openapi "github.com/vpnhouse/api/go/server/common"
 	"go.uber.org/zap"
 	"golang.org/x/net/idna"
@@ -31,11 +29,6 @@ import (
 	"github.com/vpnhouse/common-lib-go/xerror"
 )
 
-// initialize the measuring middleware only once
-var measureMW = middleware.New(middleware.Config{
-	Recorder:      metrics.NewRecorder(metrics.Config{}),
-	GroupedStatus: true,
-})
 var initMetricsOnce sync.Once
 
 type Middleware = func(http.Handler) http.Handler
