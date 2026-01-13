@@ -35,6 +35,8 @@ type Middleware = func(http.Handler) http.Handler
 
 type Option func(w *Server)
 
+var NoLabels = map[string]string{}
+
 func WithMiddleware(mw Middleware) Option {
 	return func(w *Server) {
 		w.router.Middlewares()
