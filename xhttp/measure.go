@@ -2,7 +2,6 @@ package xhttp
 
 import (
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -11,6 +10,18 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
+
+var allowedMethods = map[string]struct{}{
+	"GET":     struct{}{},
+	"HEAD":    struct{}{},
+	"OPTIONS": struct{}{},
+	"TRACE":   struct{}{},
+	"PUT":     struct{}{},
+	"DELETE":  struct{}{},
+	"POST":    struct{}{},
+	"PATCH":   struct{}{},
+	"CONNECT": struct{}{},
+}
 
 type compiledPattern struct {
 	original   string
@@ -131,15 +142,23 @@ func (m *Measure) Middleware() func(http.Handler) http.Handler {
 			duration := time.Since(start).Seconds()
 
 			path := m.normalizePath(r.URL.Path)
-			method := r.Method
-			status := strconv.Itoa(ww.Status())
-			result := m.getResult(ww.Status())
+			method := m.normalizeMethod(r.Method)
+			result := m.normalizeResult(ww.Status())
 
-			m.requestDuration.WithLabelValues(method, path, status, result).Observe(duration)
-			m.requestCount.WithLabelValues(method, path, status, result).Inc()
+			m.requestDuration.WithLabelValues(method, path, result).Observe(duration)
+			m.requestCount.WithLabelValues(method, path, result).Inc()
 			m.requestResult.WithLabelValues(method, path, result).Inc()
 		})
 	}
+}
+
+func (m *Measure) normalizeMethod(method string) string {
+	upper := strings.ToUpper(method)
+	_, ok := allowedMethods[upper]
+	if ok {
+		return upper
+	}
+	return "unknown"
 }
 
 func (m *Measure) normalizePath(requestPath string) string {
@@ -172,7 +191,7 @@ func (m *Measure) matchCompiledPattern(compiled compiledPattern, requestPath str
 	return compiled.original
 }
 
-func (m *Measure) getResult(status int) string {
+func (m *Measure) normalizeResult(status int) string {
 	switch {
 	case status >= 200 && status < 300:
 		return "success"
