@@ -12,15 +12,15 @@ import (
 )
 
 var allowedMethods = map[string]struct{}{
-	"GET":     struct{}{},
-	"HEAD":    struct{}{},
-	"OPTIONS": struct{}{},
-	"TRACE":   struct{}{},
-	"PUT":     struct{}{},
-	"DELETE":  struct{}{},
-	"POST":    struct{}{},
-	"PATCH":   struct{}{},
-	"CONNECT": struct{}{},
+	"GET":     {},
+	"HEAD":    {},
+	"OPTIONS": {},
+	"TRACE":   {},
+	"PUT":     {},
+	"DELETE":  {},
+	"POST":    {},
+	"PATCH":   {},
+	"CONNECT": {},
 }
 
 type compiledPattern struct {
@@ -76,7 +76,7 @@ func NewMeasure(config MeasureOptions) *Measure {
 				"service": config.ServiceName,
 			},
 		},
-		[]string{"method", "path", "status", "result"},
+		[]string{"method", "path", "result"},
 	)
 
 	requestCount := promauto.NewCounterVec(
@@ -89,7 +89,7 @@ func NewMeasure(config MeasureOptions) *Measure {
 				"service": config.ServiceName,
 			},
 		},
-		[]string{"method", "path", "status", "result"},
+		[]string{"method", "path", "result"},
 	)
 
 	requestResult := promauto.NewCounterVec(
