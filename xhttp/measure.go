@@ -12,15 +12,15 @@ import (
 )
 
 var allowedMethods = map[string]struct{}{
-	"GET":     {},
-	"HEAD":    {},
-	"OPTIONS": {},
-	"TRACE":   {},
-	"PUT":     {},
-	"DELETE":  {},
-	"POST":    {},
-	"PATCH":   {},
-	"CONNECT": {},
+	http.MethodGet:     {},
+	http.MethodHead:    {},
+	http.MethodOptions: {},
+	http.MethodTrace:   {},
+	http.MethodPut:     {},
+	http.MethodDelete:  {},
+	http.MethodPost:    {},
+	http.MethodPatch:   {},
+	http.MethodConnect: {},
 }
 
 type compiledPattern struct {
