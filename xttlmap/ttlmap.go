@@ -15,7 +15,7 @@ func (s *item[V]) expired(now time.Time) bool {
 		return false
 	}
 
-	return s.deadline.Before(now)
+	return now.After(s.deadline)
 }
 
 type node[K comparable, V any] struct {
