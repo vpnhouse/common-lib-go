@@ -88,8 +88,10 @@ func (r *CachedResolver) Preset(domain string, queryType uint16, response *Respo
 func (r *CachedResolver) cacheResult(key cacheKey, result *Response) {
 	result = result.Clone()
 
-	now := time.Now()
-	if !result.Expires.IsZero() {
+	if result.Expires.IsZero() {
+		r.cache.Set(key, *result, time.Time{})
+	} else {
+		now := time.Now()
 		ttl := result.Expires.Sub(now)
 		if ttl < r.minTtl {
 			result.Expires = now.Add(r.minTtl)
@@ -99,8 +101,6 @@ func (r *CachedResolver) cacheResult(key cacheKey, result *Response) {
 		}
 
 		r.cache.Set(key, *result, now.Add(r.keepTime))
-	} else {
-		r.cache.Set(key, *result, time.Time{})
 	}
 
 	zap.L().Debug("Cached", zap.String("key", fmt.Sprintf("%s:%d", key.domain, key.queryType)), zap.Any("value", result.Addresses))
