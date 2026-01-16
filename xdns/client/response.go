@@ -15,6 +15,8 @@ type Response struct {
 
 func (r *Response) Clone() *Response {
 	clone := *r
+	clone.Addresses = make([]netip.Addr, len(r.Addresses))
+	copy(clone.Addresses, r.Addresses)
 
 	return &clone
 }
