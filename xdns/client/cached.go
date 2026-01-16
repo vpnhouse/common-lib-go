@@ -95,7 +95,7 @@ func (r *CachedResolver) cacheResult(key cacheKey, result *Response) {
 		if ttl < r.minTtl {
 			result.Expires = now.Add(r.minTtl)
 		}
-		if ttl > r.minTtl {
+		if ttl > r.maxTtl {
 			result.Expires = now.Add(r.maxTtl)
 		}
 
