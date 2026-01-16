@@ -125,11 +125,11 @@ func (r *DirectResolver) once(ctx context.Context, request *Request, protected b
 		return nil, ErrDNSEmptyResponse
 	}
 
+	expires := time.Now().Add(time.Duration(ttl) * time.Second)
 	return &Response{
 		Exists:             true,
 		Addresses:          addresses,
-		CreatedAt:          time.Now(),
-		TTL:                time.Duration(ttl) * time.Second,
+		Expires:            expires,
 		ProtectionRequired: protected,
 	}, nil
 }

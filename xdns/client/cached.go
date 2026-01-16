@@ -85,15 +85,23 @@ func (r *CachedResolver) Preset(domain string, queryType uint16, response *Respo
 	}
 }
 
-func (r *CachedResolver) cacheResult(key cacheKey, lookupResult *Response) {
-	cachedResult := *lookupResult
-	if cachedResult.TTL < r.minTtl {
-		cachedResult.TTL = r.minTtl
-	}
-	if cachedResult.TTL > r.maxTtl {
-		cachedResult.TTL = r.maxTtl
+func (r *CachedResolver) cacheResult(key cacheKey, result *Response) {
+	result = result.Clone()
+
+	if result.Expires.IsZero() {
+		r.cache.Set(key, *result, time.Time{})
+	} else {
+		now := time.Now()
+		ttl := result.Expires.Sub(now)
+		if ttl < r.minTtl {
+			result.Expires = now.Add(r.minTtl)
+		}
+		if ttl > r.maxTtl {
+			result.Expires = now.Add(r.maxTtl)
+		}
+
+		r.cache.Set(key, *result, now.Add(r.keepTime))
 	}
 
-	r.cache.Set(key, cachedResult, r.keepTime)
-	zap.L().Debug("Cached", zap.String("key", fmt.Sprintf("%s:%d", key.domain, key.queryType)), zap.Any("value", cachedResult.Addresses))
+	zap.L().Debug("Cached", zap.String("key", fmt.Sprintf("%s:%d", key.domain, key.queryType)), zap.Any("value", result.Addresses))
 }

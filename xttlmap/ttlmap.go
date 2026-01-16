@@ -6,9 +6,16 @@ import (
 )
 
 type item[V any] struct {
-	value   V
-	created time.Time
-	ttl     time.Duration
+	value    V
+	deadline time.Time
+}
+
+func (s *item[V]) expired(now time.Time) bool {
+	if s.deadline.IsZero() {
+		return false
+	}
+
+	return now.After(s.deadline)
 }
 
 type node[K comparable, V any] struct {
@@ -50,14 +57,13 @@ func (s *TTLMap[K, V]) Resize(maxSize int) {
 	s.maxSize = maxSize
 }
 
-func (s *TTLMap[K, V]) Set(key K, value V, ttl time.Duration) {
+func (s *TTLMap[K, V]) Set(key K, value V, deadline time.Time) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	if node, exists := s.items[key]; exists {
 		node.item.value = value
-		node.item.created = time.Now()
-		node.item.ttl = ttl
+		node.item.deadline = deadline
 		s.moveToFront(node)
 		return
 	}
@@ -69,9 +75,8 @@ func (s *TTLMap[K, V]) Set(key K, value V, ttl time.Duration) {
 	newNode := &node[K, V]{
 		key: key,
 		item: item[V]{
-			value:   value,
-			created: time.Now(),
-			ttl:     ttl,
+			value:    value,
+			deadline: deadline,
 		},
 	}
 
@@ -95,11 +100,13 @@ func (s *TTLMap[K, V]) Get(key K) (V, bool) {
 		return zero, false
 	}
 
-	if time.Since(node.item.created) > node.item.ttl {
+	now := time.Now()
+	if node.item.expired(now) {
 		s.lock.Lock()
 		defer s.lock.Unlock()
 
-		if node, exists := s.items[key]; exists && time.Since(node.item.created) > node.item.ttl {
+		// Double checking after lock
+		if node, exists := s.items[key]; exists && node.item.expired(now) {
 			delete(s.items, node.key)
 			s.removeNode(node)
 		}
@@ -138,11 +145,12 @@ func (s *TTLMap[K, V]) cleanupExpired() {
 		s.lock.Unlock()
 	}()
 
+	now := time.Now()
+
 	expiredKeys := make([]K, 0)
 	s.lock.RLock()
-	now := time.Now()
 	for key, node := range s.items {
-		if now.Sub(node.item.created) > node.item.ttl {
+		if node.item.expired(now) {
 			expiredKeys = append(expiredKeys, key)
 		}
 	}
@@ -153,7 +161,7 @@ func (s *TTLMap[K, V]) cleanupExpired() {
 		defer s.lock.Unlock()
 
 		for _, key := range expiredKeys {
-			if node, exists := s.items[key]; exists && time.Since(node.item.created) > node.item.ttl {
+			if node, exists := s.items[key]; exists && node.item.expired(now) {
 				delete(s.items, node.key)
 				s.removeNode(node)
 			}
