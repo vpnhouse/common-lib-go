@@ -87,7 +87,6 @@ func (r *CachedResolver) Preset(domain string, queryType uint16, response *Respo
 
 func (r *CachedResolver) cacheResult(key cacheKey, result *Response) {
 	result = result.Clone()
-	var keepDeadline time.Time
 
 	now := time.Now()
 	if !result.Expires.IsZero() {
@@ -99,10 +98,10 @@ func (r *CachedResolver) cacheResult(key cacheKey, result *Response) {
 			result.Expires = now.Add(r.maxTtl)
 		}
 
-		deadlineValue := now.Add(r.keepTime)
-		keepDeadline = deadlineValue
+		r.cache.Set(key, *result, now.Add(r.keepTime))
+	} else {
+		r.cache.Set(key, *result, time.Time{})
 	}
 
-	r.cache.Set(key, *result, keepDeadline)
 	zap.L().Debug("Cached", zap.String("key", fmt.Sprintf("%s:%d", key.domain, key.queryType)), zap.Any("value", result.Addresses))
 }
