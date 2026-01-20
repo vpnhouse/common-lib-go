@@ -26,7 +26,7 @@ type RestrictLocationEntry struct {
 	Credentials []discoveryapi.Node     `json:"credentials"`
 }
 
-type RestructLocationList []RestrictLocationEntry
+type RestrictLocationList []RestrictLocationEntry
 
 func ParseJSON(v []byte) (Entitlements, error) {
 	s := Entitlements{}
@@ -112,14 +112,14 @@ func (s Entitlements) ShapeDownstream() (int, bool) {
 
 func (s Entitlements) AddRestrictLocation(entry *RestrictLocationEntry) {
 	if _, ok := s[RestrictLocation]; !ok {
-		s[RestrictLocation] = RestructLocationList{*entry}
+		s[RestrictLocation] = RestrictLocationList{*entry}
 	} else {
-		s[RestrictLocation] = append(s[RestrictLocation].(RestructLocationList), *entry)
+		s[RestrictLocation] = append(s[RestrictLocation].(RestrictLocationList), *entry)
 	}
 }
 
-func (s Entitlements) GetRestrictLocation() RestructLocationList {
-	return s[RestrictLocation].(RestructLocationList)
+func (s Entitlements) GetRestrictLocation() RestrictLocationList {
+	return s[RestrictLocation].(RestrictLocationList)
 }
 
 func asBool(value any) (bool, bool) {
