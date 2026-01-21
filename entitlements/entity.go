@@ -3,8 +3,6 @@ package entitlements
 import (
 	"encoding/json"
 	"strconv"
-
-	discoveryapi "github.com/vpnhouse/api/go/server/discovery"
 )
 
 type Entitlements map[string]any
@@ -18,15 +16,6 @@ const (
 	Ads              = "ads"
 	RestrictLocation = "restrict_location"
 )
-
-type RestrictLocationEntry struct {
-	ID          string                  `json:"id"`
-	Name        string                  `json:"name"`
-	Labels      *map[string]interface{} `json:"labels,omitempty"`
-	Credentials []discoveryapi.Node     `json:"credentials"`
-}
-
-type RestrictLocationList []RestrictLocationEntry
 
 func ParseJSON(v []byte) (Entitlements, error) {
 	s := Entitlements{}
@@ -108,18 +97,6 @@ func (s Entitlements) SetShapeDownstream(v int) {
 
 func (s Entitlements) ShapeDownstream() (int, bool) {
 	return asInt(s[ShapeDownstream])
-}
-
-func (s Entitlements) AddRestrictLocation(entry *RestrictLocationEntry) {
-	if _, ok := s[RestrictLocation]; !ok {
-		s[RestrictLocation] = RestrictLocationList{*entry}
-	} else {
-		s[RestrictLocation] = append(s[RestrictLocation].(RestrictLocationList), *entry)
-	}
-}
-
-func (s Entitlements) GetRestrictLocation() RestrictLocationList {
-	return s[RestrictLocation].(RestrictLocationList)
 }
 
 func asBool(value any) (bool, bool) {
