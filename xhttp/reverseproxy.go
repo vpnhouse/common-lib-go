@@ -1,4 +1,4 @@
-package reverseproxy
+package xhttp
 
 import (
 	"net/http"
@@ -8,17 +8,12 @@ import (
 	"go.uber.org/zap"
 )
 
-type Config struct {
+type ReverseConfig struct {
 	URL      string   `json:"url" yaml:"url"`
 	Patterns []string `json:"patterns" yaml:"patterns"`
 }
 
-type Handler struct {
-	Patterns []string
-	Func     http.HandlerFunc
-}
-
-func MakeHandler(config *Config) (*Handler, error) {
+func MakeReverseHandler(config *ReverseConfig) (*HandleStruct, error) {
 	targetURL, err := url.Parse(config.URL)
 	if err != nil {
 		zap.L().Error("SKipping invalid target URL", zap.Error(err), zap.String("target", config.URL))
@@ -32,7 +27,7 @@ func MakeHandler(config *Config) (*Handler, error) {
 		req.Header.Set("X-Forwarded-Host", req.Host)
 		req.Host = targetURL.Host
 	}
-	return &Handler{
+	return &HandleStruct{
 		Patterns: config.Patterns,
 		Func: func(w http.ResponseWriter, req *http.Request) {
 			proxy.ServeHTTP(w, req)
@@ -40,11 +35,11 @@ func MakeHandler(config *Config) (*Handler, error) {
 	}, nil
 }
 
-func MakeHandlers(configs []*Config) ([]*Handler, error) {
-	result := make([]*Handler, 0, len(configs))
+func MakeHReverseandlers(configs []*ReverseConfig) ([]*HandleStruct, error) {
+	result := make([]*HandleStruct, 0, len(configs))
 
 	for _, config := range configs {
-		handler, err := MakeHandler(config)
+		handler, err := MakeReverseHandler(config)
 		if err != nil {
 			return nil, err
 		}

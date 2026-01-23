@@ -29,6 +29,11 @@ import (
 	"github.com/vpnhouse/common-lib-go/xerror"
 )
 
+type HandleStruct struct {
+	Patterns []string
+	Func     http.HandlerFunc
+}
+
 var initMetricsOnce sync.Once
 
 type Middleware = func(http.Handler) http.Handler
@@ -98,6 +103,16 @@ func WithHTTPMeasure(namespace, subsystem, serviceName string, buckets []float64
 		})
 
 		w.router.Use(measure.Middleware())
+	}
+}
+
+func WithHandlers(handlers ...*HandleStruct) Option {
+	return func(w *Server) {
+		for _, h := range handlers {
+			for _, p := range h.Patterns {
+				w.Router().HandleFunc(p, h.Func)
+			}
+		}
 	}
 }
 
