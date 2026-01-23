@@ -35,7 +35,7 @@ func MakeReverseHandler(config *ReverseConfig) (*HandleStruct, error) {
 	}, nil
 }
 
-func MakeHReverseandlers(configs []*ReverseConfig) ([]*HandleStruct, error) {
+func MakeReverseHandlers(configs []*ReverseConfig) ([]*HandleStruct, error) {
 	result := make([]*HandleStruct, 0, len(configs))
 
 	for _, config := range configs {
