@@ -5,38 +5,52 @@ import (
 	"net/http/httputil"
 	"net/url"
 
-	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 )
 
-type Target struct {
-	URL      string   `yaml:"url"`
-	Patterns []string `yaml:"patterns"`
-}
-
 type Config struct {
-	Targets []*Target `yaml:"targets"`
+	URL      string   `json:"url" yaml:"url"`
+	Patterns []string `json:"patterns" yaml:"patterns"`
 }
 
-func RegisterHandlers(r chi.Router, config *Config) {
-	for _, target := range config.Targets {
-		targetURL, err := url.Parse(target.URL)
-		if err != nil {
-			zap.L().Error("SKipping invalid target URL", zap.Error(err), zap.String("target", target.URL))
-			return
-		}
-		proxy := httputil.NewSingleHostReverseProxy(targetURL)
+type Handler struct {
+	Patterns []string
+	Func     http.HandlerFunc
+}
 
-		originalDirector := proxy.Director
-		proxy.Director = func(req *http.Request) {
-			originalDirector(req)
-			req.Header.Set("X-Forwarded-Host", req.Host)
-			req.Host = targetURL.Host
-		}
-		for _, path := range target.Patterns {
-			r.HandleFunc(path, func(w http.ResponseWriter, req *http.Request) {
-				proxy.ServeHTTP(w, req)
-			})
-		}
+func MakeHandler(config *Config) (*Handler, error) {
+	targetURL, err := url.Parse(config.URL)
+	if err != nil {
+		zap.L().Error("SKipping invalid target URL", zap.Error(err), zap.String("target", config.URL))
+		return nil, err
 	}
+	proxy := httputil.NewSingleHostReverseProxy(targetURL)
+
+	originalDirector := proxy.Director
+	proxy.Director = func(req *http.Request) {
+		originalDirector(req)
+		req.Header.Set("X-Forwarded-Host", req.Host)
+		req.Host = targetURL.Host
+	}
+	return &Handler{
+		Patterns: config.Patterns,
+		Func: func(w http.ResponseWriter, req *http.Request) {
+			proxy.ServeHTTP(w, req)
+		},
+	}, nil
+}
+
+func MakeHandlers(configs []*Config) ([]*Handler, error) {
+	result := make([]*Handler, 0, len(configs))
+
+	for _, config := range configs {
+		handler, err := MakeHandler(config)
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, handler)
+	}
+
+	return result, nil
 }
