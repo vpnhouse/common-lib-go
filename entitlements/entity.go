@@ -10,7 +10,7 @@ type RestrictLocationEntry struct {
 	discoveryAPI.Location
 	Credentials []discoveryAPI.Node `json:"credentials"`
 }
-type entitlements struct {
+type Entitlements struct {
 	Ads              bool                    `json:"ads" yaml:"ads"`
 	RestrictLocation []RestrictLocationEntry `json:"restrict_location" yaml:"restrict_location"`
 	Wireguard        bool                    `json:"wireguard" yaml:"wireguard"`
@@ -20,11 +20,10 @@ type entitlements struct {
 	ShapeDownstream  *int                    `json:"shape_downstream" yaml:"shape_downstream"`
 }
 
-type Entitlements *entitlements
 type EntitlementsMapAny map[string]any
 
-func FromJSON(v []byte) (Entitlements, error) {
-	i := entitlements{}
+func FromJSON(v []byte) (*Entitlements, error) {
+	i := Entitlements{}
 	err := json.Unmarshal(v, &i)
 	if err != nil {
 		return nil, err
@@ -32,22 +31,22 @@ func FromJSON(v []byte) (Entitlements, error) {
 	return &i, nil
 }
 
-func FromMapAny(m EntitlementsMapAny) (Entitlements, error) {
+func FromMapAny(m EntitlementsMapAny) (*Entitlements, error) {
 	intermediate, err := json.Marshal(m)
 	if err != nil {
 		return nil, err
 	}
 
-	var result entitlements
+	var result Entitlements
 	err = json.Unmarshal(intermediate, &result)
 	return &result, err
 }
 
-func (i *entitlements) ToJSON() ([]byte, error) {
+func (i *Entitlements) ToJSON() ([]byte, error) {
 	return json.Marshal(i)
 }
 
-func (i *entitlements) ToMapAny() (EntitlementsMapAny, error) {
+func (i *Entitlements) ToMapAny() (EntitlementsMapAny, error) {
 	intermediate, err := json.Marshal(i)
 	if err != nil {
 		return nil, err
@@ -58,31 +57,31 @@ func (i *entitlements) ToMapAny() (EntitlementsMapAny, error) {
 	return result, err
 }
 
-func (i *entitlements) HasWireguard() bool {
+func (i *Entitlements) HasWireguard() bool {
 	return i.Wireguard
 }
 
-func (i *entitlements) HasIPRose() bool {
+func (i *Entitlements) HasIPRose() bool {
 	return i.IPRose
 }
 
-func (i entitlements) HasProxy() bool {
+func (i *Entitlements) HasProxy() bool {
 	return i.Proxy
 }
 
-func (i *entitlements) HasAds() bool {
+func (i *Entitlements) HasAds() bool {
 	return i.Ads
 }
 
-func (i *entitlements) IsPaid() bool {
+func (i *Entitlements) IsPaid() bool {
 	return !i.HasAds()
 }
 
-func (i *entitlements) IsFree() bool {
+func (i *Entitlements) IsFree() bool {
 	return i.HasAds()
 }
 
-func (i *entitlements) GetShapeUpstream() (int, bool) {
+func (i *Entitlements) GetShapeUpstream() (int, bool) {
 	if i.ShapeUpstream == nil {
 		return 0, false
 	}
@@ -90,7 +89,7 @@ func (i *entitlements) GetShapeUpstream() (int, bool) {
 	return *i.ShapeUpstream, true
 }
 
-func (i *entitlements) GetShapeDownstream() (int, bool) {
+func (i *Entitlements) GetShapeDownstream() (int, bool) {
 	if i.ShapeDownstream == nil {
 		return 0, false
 	}
