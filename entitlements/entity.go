@@ -30,8 +30,6 @@ type ReducedEntitlements struct {
 	ShapeDownstream int      `json:"dnst,omitempty" yaml:"dnst,omitempty"`
 }
 
-type EntitlementsMapAny map[string]any
-
 func (i *Entitlements) Reduce() *ReducedEntitlements {
 	result := &ReducedEntitlements{
 		Ads:             i.Ads,
@@ -70,7 +68,7 @@ func FromJSON(v []byte) (*Entitlements, error) {
 	return &i, nil
 }
 
-func FromMapAny(m EntitlementsMapAny) (*Entitlements, error) {
+func FromMapAny(m map[string]any) (*Entitlements, error) {
 	intermediate, err := json.Marshal(m)
 	if err != nil {
 		return nil, err
@@ -85,13 +83,13 @@ func (i *Entitlements) ToJSON() ([]byte, error) {
 	return json.Marshal(i)
 }
 
-func (i *Entitlements) ToMapAny() (EntitlementsMapAny, error) {
+func (i *Entitlements) ToMapAny() (map[string]any, error) {
 	intermediate, err := json.Marshal(i)
 	if err != nil {
 		return nil, err
 	}
 
-	var result EntitlementsMapAny
+	var result map[string]any
 	err = json.Unmarshal(intermediate, &result)
 	return result, err
 }
