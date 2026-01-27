@@ -94,6 +94,10 @@ func (i *Entitlements) ToMapAny() (map[string]any, error) {
 	return result, err
 }
 
+func (i *Entitlements) ToMapAnyPtr() (*map[string]any, error) {
+	result, err := i.ToMapAny()
+	return &result, err
+}
 func (i *Entitlements) HasWireguard() bool {
 	return i.Wireguard
 }
