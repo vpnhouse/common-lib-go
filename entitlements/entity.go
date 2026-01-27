@@ -11,16 +11,55 @@ type RestrictLocationEntry struct {
 	Credentials []discoveryAPI.Node `json:"credentials"`
 }
 type Entitlements struct {
-	Ads              bool                    `json:"ads" yaml:"ads"`
-	RestrictLocation []RestrictLocationEntry `json:"restrict_location" yaml:"restrict_location"`
-	Wireguard        bool                    `json:"wireguard" yaml:"wireguard"`
-	IPRose           bool                    `json:"iprose" yaml:"iprose"`
-	Proxy            bool                    `json:"proxy" yaml:"proxy"`
-	ShapeUpstream    *int                    `json:"shape_upstream" yaml:"shape_upstream"`
-	ShapeDownstream  *int                    `json:"shape_downstream" yaml:"shape_downstream"`
+	Ads              bool                    `json:"ads,omitempty" yaml:"ads,omitempty"`
+	RestrictLocation []RestrictLocationEntry `json:"restrict_location,omitempty" yaml:"restrict_location,omitempty"`
+	Wireguard        bool                    `json:"wireguard,omitempty" yaml:"wireguard,omitempty"`
+	IPRose           bool                    `json:"iprose,omitempty" yaml:"iprose,omitempty"`
+	Proxy            bool                    `json:"proxy,omitempty" yaml:"proxy,omitempty"`
+	ShapeUpstream    int                     `json:"shape_upstream,omitempty" yaml:"shape_upstream,omitempty"`
+	ShapeDownstream  int                     `json:"shape_downstream,omitempty" yaml:"shape_downstream,omitempty"`
+}
+
+type ReducedEntitlements struct {
+	Ads             bool     `json:"ads,omitempty" yaml:"ads,omitempty"`
+	AllowedNodes    []string `json:"allow,omitempty" yaml:"allow,omitempty"`
+	Wireguard       bool     `json:"wg,omitempty" yaml:"wg,omitempty"`
+	IPRose          bool     `json:"ipr,omitempty" yaml:"ipr,omitempty"`
+	Proxy           bool     `json:"prx,omitempty" yaml:"prx,omitempty"`
+	ShapeUpstream   int      `json:"upst,omitempty" yaml:"upst,omitempty"`
+	ShapeDownstream int      `json:"dnst,omitempty" yaml:"dnst,omitempty"`
 }
 
 type EntitlementsMapAny map[string]any
+
+func (i *Entitlements) Reduce() *ReducedEntitlements {
+	result := &ReducedEntitlements{
+		Ads:             i.Ads,
+		Wireguard:       i.Wireguard,
+		IPRose:          i.IPRose,
+		Proxy:           i.Proxy,
+		ShapeUpstream:   i.ShapeDownstream,
+		ShapeDownstream: i.ShapeDownstream,
+	}
+
+	return result
+}
+
+func FromJSONResuced(v []byte) (*ReducedEntitlements, error) {
+	r := ReducedEntitlements{}
+	err := json.Unmarshal(v, &r)
+	if err == nil {
+		return &r, nil
+	}
+
+	e := Entitlements{}
+	err = json.Unmarshal(v, &e)
+	if err == nil {
+		return e.Reduce(), nil
+	}
+
+	return nil, err
+}
 
 func FromJSON(v []byte) (*Entitlements, error) {
 	i := Entitlements{}
@@ -82,17 +121,9 @@ func (i *Entitlements) IsFree() bool {
 }
 
 func (i *Entitlements) GetShapeUpstream() (int, bool) {
-	if i.ShapeUpstream == nil {
-		return 0, false
-	}
-
-	return *i.ShapeUpstream, true
+	return i.ShapeUpstream, i.ShapeUpstream > 0
 }
 
 func (i *Entitlements) GetShapeDownstream() (int, bool) {
-	if i.ShapeDownstream == nil {
-		return 0, false
-	}
-
-	return *i.ShapeDownstream, true
+	return i.ShapeDownstream, i.ShapeDownstream > 0
 }
