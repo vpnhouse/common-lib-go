@@ -2,139 +2,128 @@ package entitlements
 
 import (
 	"encoding/json"
-	"strconv"
+
+	discoveryAPI "github.com/vpnhouse/api/go/client/discovery"
 )
 
-type Entitlements map[string]any
+type RestrictLocationEntry struct {
+	discoveryAPI.Location
+	Credentials []discoveryAPI.Node `json:"credentials"`
+}
+type Entitlements struct {
+	Ads              bool                    `json:"ads,omitempty" yaml:"ads,omitempty"`
+	RestrictLocation []RestrictLocationEntry `json:"restrict_location,omitempty" yaml:"restrict_location,omitempty"`
+	Wireguard        bool                    `json:"wireguard,omitempty" yaml:"wireguard,omitempty"`
+	IPRose           bool                    `json:"iprose,omitempty" yaml:"iprose,omitempty"`
+	Proxy            bool                    `json:"proxy,omitempty" yaml:"proxy,omitempty"`
+	ShapeUpstream    int                     `json:"shape_upstream,omitempty" yaml:"shape_upstream,omitempty"`
+	ShapeDownstream  int                     `json:"shape_downstream,omitempty" yaml:"shape_downstream,omitempty"`
+}
 
-const (
-	Wireguard       = "wireguard"
-	IPRose          = "iprose"
-	Proxy           = "proxy"
-	ShapeDownstream = "shape_downstream"
-	ShapeUpstream   = "shape_upstream"
-	Ads             = "ads"
-)
+type ReducedEntitlements struct {
+	Ads             bool     `json:"ads,omitempty" yaml:"ads,omitempty"`
+	AllowedNodes    []string `json:"allow,omitempty" yaml:"allow,omitempty"`
+	Wireguard       bool     `json:"wg,omitempty" yaml:"wg,omitempty"`
+	IPRose          bool     `json:"ipr,omitempty" yaml:"ipr,omitempty"`
+	Proxy           bool     `json:"prx,omitempty" yaml:"prx,omitempty"`
+	ShapeUpstream   int      `json:"upst,omitempty" yaml:"upst,omitempty"`
+	ShapeDownstream int      `json:"dnst,omitempty" yaml:"dnst,omitempty"`
+}
 
-func ParseJSON(v []byte) (Entitlements, error) {
-	s := Entitlements{}
-	err := json.Unmarshal(v, &s)
+type EntitlementsMapAny map[string]any
+
+func (i *Entitlements) Reduce() *ReducedEntitlements {
+	result := &ReducedEntitlements{
+		Ads:             i.Ads,
+		Wireguard:       i.Wireguard,
+		IPRose:          i.IPRose,
+		Proxy:           i.Proxy,
+		ShapeUpstream:   i.ShapeDownstream,
+		ShapeDownstream: i.ShapeDownstream,
+	}
+
+	return result
+}
+
+func FromJSONResuced(v []byte) (*ReducedEntitlements, error) {
+	r := ReducedEntitlements{}
+	err := json.Unmarshal(v, &r)
+	if err == nil {
+		return &r, nil
+	}
+
+	e := Entitlements{}
+	err = json.Unmarshal(v, &e)
+	if err == nil {
+		return e.Reduce(), nil
+	}
+
+	return nil, err
+}
+
+func FromJSON(v []byte) (*Entitlements, error) {
+	i := Entitlements{}
+	err := json.Unmarshal(v, &i)
 	if err != nil {
 		return nil, err
 	}
-	return s, nil
+	return &i, nil
 }
 
-func (s Entitlements) AsMap() map[string]any {
-	return s
-}
-
-func (s Entitlements) AsMapPtr() *map[string]any {
-	var m map[string]any = s
-	return &m
-}
-
-func (s Entitlements) JSON() ([]byte, error) {
-	return json.Marshal(s)
-}
-
-func (s Entitlements) SetWireguard(v bool) {
-	s[Wireguard] = v
-}
-
-func (s Entitlements) HasWireguard() bool {
-	v, _ := asBool(s[Wireguard])
-	return v
-}
-
-func (s Entitlements) SetIPRose(v bool) {
-	s[IPRose] = v
-}
-
-func (s Entitlements) HasIPRose() bool {
-	v, _ := asBool(s[IPRose])
-	return v
-}
-
-func (s Entitlements) SetProxy(v bool) {
-	s[Proxy] = v
-}
-
-func (s Entitlements) HasProxy() bool {
-	v, _ := asBool(s[Proxy])
-	return v
-}
-
-func (s Entitlements) SetAds(v bool) {
-	s[Ads] = v
-}
-
-func (s Entitlements) HasAds() bool {
-	v, _ := asBool(s[Ads])
-	return v
-}
-
-func (s Entitlements) IsPaid() bool {
-	return !s.HasAds()
-}
-
-func (s Entitlements) IsFree() bool {
-	return s.HasAds()
-}
-
-func (s Entitlements) SetShapeUpstream(v int) {
-	s[ShapeUpstream] = v
-}
-
-func (s Entitlements) ShapeUpstream() (int, bool) {
-	return asInt(s[ShapeUpstream])
-}
-
-func (s Entitlements) SetShapeDownstream(v int) {
-	s[ShapeDownstream] = v
-}
-
-func (s Entitlements) ShapeDownstream() (int, bool) {
-	return asInt(s[ShapeDownstream])
-}
-
-func asBool(value any) (bool, bool) {
-	switch v := value.(type) {
-	case bool:
-		return v, true
-	case string:
-		if v == "true" {
-			return true, true
-		}
-		if v == "false" {
-			return false, true
-		}
+func FromMapAny(m EntitlementsMapAny) (*Entitlements, error) {
+	intermediate, err := json.Marshal(m)
+	if err != nil {
+		return nil, err
 	}
 
-	return false, false
+	var result Entitlements
+	err = json.Unmarshal(intermediate, &result)
+	return &result, err
 }
 
-func asInt(value any) (int, bool) {
-	switch v := value.(type) {
-	case int64:
-		return int(v), true
-	case int32:
-		return int(v), true
-	case uint64:
-		return int(v), true
-	case uint32:
-		return int(v), true
-	case uint:
-		return int(v), true
-	case int:
-		return v, true
-	case string:
-		i, err := strconv.Atoi(v)
-		if err != nil {
-			return 0, false
-		}
-		return i, true
+func (i *Entitlements) ToJSON() ([]byte, error) {
+	return json.Marshal(i)
+}
+
+func (i *Entitlements) ToMapAny() (EntitlementsMapAny, error) {
+	intermediate, err := json.Marshal(i)
+	if err != nil {
+		return nil, err
 	}
 
-	return 0, false
+	var result EntitlementsMapAny
+	err = json.Unmarshal(intermediate, &result)
+	return result, err
+}
+
+func (i *Entitlements) HasWireguard() bool {
+	return i.Wireguard
+}
+
+func (i *Entitlements) HasIPRose() bool {
+	return i.IPRose
+}
+
+func (i *Entitlements) HasProxy() bool {
+	return i.Proxy
+}
+
+func (i *Entitlements) HasAds() bool {
+	return i.Ads
+}
+
+func (i *Entitlements) IsPaid() bool {
+	return !i.HasAds()
+}
+
+func (i *Entitlements) IsFree() bool {
+	return i.HasAds()
+}
+
+func (i *Entitlements) GetShapeUpstream() (int, bool) {
+	return i.ShapeUpstream, i.ShapeUpstream > 0
+}
+
+func (i *Entitlements) GetShapeDownstream() (int, bool) {
+	return i.ShapeDownstream, i.ShapeDownstream > 0
 }
