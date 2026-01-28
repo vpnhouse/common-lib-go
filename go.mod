@@ -23,9 +23,10 @@ require (
 	github.com/oschwald/maxminddb-golang v1.8.0
 	github.com/prometheus/client_golang v1.12.1
 	github.com/rubenv/sql-migrate v1.0.0
+	github.com/slok/go-http-metrics v0.10.0
 	github.com/stretchr/testify v1.8.4
 	github.com/vishvananda/netlink v1.1.0
-	github.com/vpnhouse/api v0.0.0-20260127062606-f4ec82fc30ae
+	github.com/vpnhouse/api v0.0.0-20250401073232-569d75f3a98b
 	go.uber.org/zap v1.25.0
 	golang.org/x/net v0.17.0
 	golang.org/x/sys v0.13.0
