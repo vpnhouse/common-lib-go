@@ -59,6 +59,15 @@ func FromJSONResuced(v []byte) (*ReducedEntitlements, error) {
 	return nil, err
 }
 
+func MapAnyFromJSON(v []byte) (map[string]any, error) {
+	i := map[string]any{}
+	err := json.Unmarshal(v, &i)
+	if err != nil {
+		return nil, err
+	}
+	return i, nil
+}
+
 func FromJSON(v []byte) (*Entitlements, error) {
 	i := Entitlements{}
 	err := json.Unmarshal(v, &i)
