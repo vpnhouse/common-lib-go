@@ -11,6 +11,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
+	"github.com/vpnhouse/common-lib-go/entitlements"
 )
 
 var (
@@ -40,13 +41,13 @@ func (l StringList) Has(entry string) bool {
 }
 
 type ClientClaims struct {
-	Audience       StringList     `json:"aud,omitempty"`
-	UserId         string         `json:"user_id,omitempty"`
-	InstallationId string         `json:"installation_id,omitempty"`
-	PlatformType   string         `json:"platform_type,omitempty"`
-	Entitlements   map[string]any `json:"entitlements,omitempty"`
-	ClientFeatures map[string]any `json:"client_features,omitempty"`
-	DailyLimit     int64          `json:"daily_limit,omitempty"`
+	Audience       StringList                       `json:"aud,omitempty"`
+	UserId         string                           `json:"user_id,omitempty"`
+	InstallationId string                           `json:"installation_id,omitempty"`
+	PlatformType   string                           `json:"platform_type,omitempty"`
+	Entitlements   entitlements.ReducedEntitlements `json:"entitlements,omitempty"`
+	ClientFeatures map[string]any                   `json:"client_features,omitempty"`
+	DailyLimit     int64                            `json:"daily_limit,omitempty"`
 	jwt.StandardClaims
 }
 
