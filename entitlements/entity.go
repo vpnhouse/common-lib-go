@@ -2,6 +2,7 @@ package entitlements
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 )
 
@@ -14,6 +15,7 @@ const (
 	ShapeDownstream = "shape_downstream"
 	ShapeUpstream   = "shape_upstream"
 	Ads             = "ads"
+	Restrictions    = "restrictions"
 )
 
 func ParseJSON(v []byte) (Entitlements, error) {
@@ -96,6 +98,19 @@ func (s Entitlements) SetShapeDownstream(v int) {
 
 func (s Entitlements) ShapeDownstream() (int, bool) {
 	return asInt(s[ShapeDownstream])
+}
+
+func (s Entitlements) Restrictions() (string, bool) {
+	v, ok := s[Restrictions]
+	if !ok {
+		return "", false
+	}
+
+	return fmt.Sprintf("%v", v), true
+}
+
+func (s Entitlements) SetRestrictions(v string) {
+	s[Restrictions] = v
 }
 
 func asBool(value any) (bool, bool) {
