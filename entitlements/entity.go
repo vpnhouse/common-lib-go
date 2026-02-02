@@ -1,6 +1,7 @@
 package entitlements
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"strconv"
 )
@@ -16,6 +17,22 @@ const (
 	Ads             = "ads"
 	Restrictions    = "restrictions"
 )
+
+func (s Entitlements) Base64String() (string, error) {
+	j, err := s.JSON()
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(j), nil
+}
+
+func FromBase64String(v string) (Entitlements, error) {
+	j, err := base64.StdEncoding.DecodeString(v)
+	if err != nil {
+		return nil, err
+	}
+	return ParseJSON(j)
+}
 
 func ParseJSON(v []byte) (Entitlements, error) {
 	s := Entitlements{}
