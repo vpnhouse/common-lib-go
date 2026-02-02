@@ -3,8 +3,6 @@ package entitlements
 import (
 	"encoding/json"
 	"strconv"
-
-	"github.com/vpnhouse/common-lib-go/capabilities"
 )
 
 type Entitlements map[string]any
@@ -17,7 +15,6 @@ const (
 	ShapeUpstream   = "shape_upstream"
 	Ads             = "ads"
 	Restrictions    = "restrictions"
-	Capabilities    = "capabilities"
 )
 
 func ParseJSON(v []byte) (Entitlements, error) {
@@ -118,27 +115,6 @@ func (s Entitlements) Restrictions() (string, bool) {
 
 func (s Entitlements) SetRestrictions(v string) {
 	s[Restrictions] = v
-}
-
-func (s Entitlements) Capabilities() capabilities.CapabilitySet {
-	v, ok := s[Capabilities]
-	if !ok {
-		return capabilities.CapabilitySet{}
-	}
-	switch caps := v.(type) {
-	case string:
-		cap, err := capabilities.ParseCapabilitySet(caps, true)
-		if err != nil {
-			return capabilities.CapabilitySet{}
-		}
-		return *cap
-	}
-
-	return capabilities.CapabilitySet{}
-}
-
-func (s Entitlements) SetCapabilities(cap capabilities.CapabilitySet) {
-	s[Capabilities] = cap.String()
 }
 
 func asBool(value any) (bool, bool) {
