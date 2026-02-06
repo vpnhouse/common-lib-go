@@ -1,6 +1,7 @@
 package entitlements
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"strconv"
 )
@@ -14,7 +15,24 @@ const (
 	ShapeDownstream = "shape_downstream"
 	ShapeUpstream   = "shape_upstream"
 	Ads             = "ads"
+	Restrictions    = "restrictions"
 )
+
+func (s Entitlements) Base64String() (string, error) {
+	j, err := s.JSON()
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(j), nil
+}
+
+func FromBase64String(v string) (Entitlements, error) {
+	j, err := base64.StdEncoding.DecodeString(v)
+	if err != nil {
+		return nil, err
+	}
+	return ParseJSON(j)
+}
 
 func ParseJSON(v []byte) (Entitlements, error) {
 	s := Entitlements{}
@@ -96,6 +114,24 @@ func (s Entitlements) SetShapeDownstream(v int) {
 
 func (s Entitlements) ShapeDownstream() (int, bool) {
 	return asInt(s[ShapeDownstream])
+}
+
+func (s Entitlements) Restrictions() (string, bool) {
+	v, ok := s[Restrictions]
+	if !ok {
+		return "", false
+	}
+
+	switch restrictions := v.(type) {
+	case string:
+		return restrictions, true
+	}
+
+	return "", false
+}
+
+func (s Entitlements) SetRestrictions(v string) {
+	s[Restrictions] = v
 }
 
 func asBool(value any) (bool, bool) {
